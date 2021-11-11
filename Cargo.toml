@@ -1,0 +1,3 @@
+[workspace]
+members = ["crates/proto", "crates/mqtt"]
+resolver = "2"
