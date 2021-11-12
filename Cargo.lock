@@ -239,7 +239,9 @@ dependencies = [
 name = "hass-mqtt-proto"
 version = "0.0.0"
 dependencies = [
+ "semval",
  "serde",
+ "serde_json",
  "serde_test",
 ]
 
@@ -527,6 +529,15 @@ name = "scopeguard"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d29ab0c6d3fc0ee92fe66e2d99f700eab17a8d57d1c1d3b748380fb20baa78cd"
+
+[[package]]
+name = "semval"
+version = "0.1.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ce89614f235adb14afbaf939137764b17091e9b010ec77651882948ebf391f96"
+dependencies = [
+ "smallvec",
+]
 
 [[package]]
 name = "serde"
