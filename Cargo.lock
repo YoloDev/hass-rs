@@ -239,6 +239,7 @@ dependencies = [
 name = "hass-mqtt-proto"
 version = "0.0.0"
 dependencies = [
+ "nameof",
  "semval",
  "serde",
  "serde_json",
@@ -342,6 +343,12 @@ checksum = "b9f1c5b025cda876f66ef43a113f91ebc9f4ccef34843000e0adf6ebbab84e21"
 dependencies = [
  "winapi",
 ]
+
+[[package]]
+name = "nameof"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9ce8b389a86cabeb0d8b33a61e60f3cbb4de38914342fe274e69111f3b5d9c44"
 
 [[package]]
 name = "ntapi"

@@ -16,3 +16,19 @@ impl<'a> Validate for Payload<'a> {
       .into()
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn empty_payload_is_invalid() {
+    let err: Vec<_> = Payload::from("")
+      .validate()
+      .expect_err("should be invalid")
+      .into_iter()
+      .collect();
+
+    assert_eq!(&*err, &[PayloadInvalidity::Empty])
+  }
+}

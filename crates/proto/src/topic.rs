@@ -21,3 +21,41 @@ impl<'a> Validate for Topic<'a> {
       .into()
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn empty_topic_is_invalid() {
+    let err: Vec<_> = Topic::from("")
+      .validate()
+      .expect_err("should be invalid")
+      .into_iter()
+      .collect();
+
+    assert_eq!(&*err, &[TopicInvalidity::Empty])
+  }
+
+  #[test]
+  fn pound_symbol_in_topic_is_invalid() {
+    let err: Vec<_> = Topic::from("foo/#/bar")
+      .validate()
+      .expect_err("should be invalid")
+      .into_iter()
+      .collect();
+
+    assert_eq!(&*err, &[TopicInvalidity::IllegalCharacter])
+  }
+
+  #[test]
+  fn plus_symbol_in_topic_is_invalid() {
+    let err: Vec<_> = Topic::from("foo/+/bar")
+      .validate()
+      .expect_err("should be invalid")
+      .into_iter()
+      .collect();
+
+    assert_eq!(&*err, &[TopicInvalidity::IllegalCharacter])
+  }
+}

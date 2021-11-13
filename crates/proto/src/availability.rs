@@ -86,6 +86,7 @@ impl<'a> Validate for Availability<'a> {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use nameof::{name_of, name_of_type};
   use serde_test::{assert_tokens, Token};
   use std::borrow::Cow;
 
@@ -99,10 +100,10 @@ mod tests {
       },
       &[
         Token::Struct {
-          name: "Availability",
+          name: name_of_type!(Availability),
           len: 1,
         },
-        Token::Str("topic"),
+        Token::Str(name_of!(topic in Availability)),
         Token::Str("the/topic"),
         Token::StructEnd,
       ],
@@ -119,15 +120,15 @@ mod tests {
       },
       &[
         Token::Struct {
-          name: "Availability",
+          name: name_of_type!(Availability),
           len: 3,
         },
-        Token::Str("topic"),
+        Token::Str(name_of!(topic in Availability)),
         Token::Str("the/topic"),
-        Token::Str("payload_available"),
+        Token::Str(name_of!(payload_available in Availability)),
         Token::Some,
         Token::Str("available"),
-        Token::Str("payload_not_available"),
+        Token::Str(name_of!(payload_not_available in Availability)),
         Token::Some,
         Token::Str("not_available"),
         Token::StructEnd,
@@ -140,5 +141,63 @@ mod tests {
     let json = r##"{"topic":"the/topic"}"##;
     let availability: Availability = serde_json::from_str(json).expect("should parse");
     assert!(matches!(availability.topic, Topic(Cow::Borrowed(_))));
+  }
+
+  #[test]
+  fn invalid_payload_available_is_invalid() {
+    let err: Vec<_> = Availability {
+      topic: Topic::from("topic"),
+      payload_available: Some(Payload::from("")),
+      payload_not_available: None,
+    }
+    .validate()
+    .expect_err("should be invalid")
+    .into_iter()
+    .collect();
+
+    assert_eq!(
+      &*err,
+      &[AvailabilityDataInvalidity::PayloadAvailable(
+        PayloadInvalidity::Empty
+      )]
+    )
+  }
+
+  #[test]
+  fn invalid_payload_not_available_is_invalid() {
+    let err: Vec<_> = Availability {
+      topic: Topic::from("topic"),
+      payload_available: None,
+      payload_not_available: Some(Payload::from("")),
+    }
+    .validate()
+    .expect_err("should be invalid")
+    .into_iter()
+    .collect();
+
+    assert_eq!(
+      &*err,
+      &[AvailabilityDataInvalidity::PayloadNotAvailable(
+        PayloadInvalidity::Empty
+      )]
+    )
+  }
+
+  #[test]
+  fn invalid_topic_is_invalid() {
+    let err: Vec<_> = Availability {
+      topic: Topic::from(""),
+      payload_available: None,
+      payload_not_available: None,
+    }
+    .validate()
+    .expect_err("should be invalid")
+    .into_iter()
+    .collect();
+
+    assert_eq!(
+      &*err,
+      &[AvailabilityDataInvalidity::Topic(TopicInvalidity::Empty)]
+    )
   }
 }
