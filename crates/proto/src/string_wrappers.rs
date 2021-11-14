@@ -123,6 +123,31 @@ typed_str!(
   pub Payload
 );
 
+typed_str!(
+  /// [Home-Assistant device icon][icon].
+  ///
+  /// [icon]: https://www.home-assistant.io/docs/configuration/customizing-devices/#icon
+  pub Icon
+);
+
+typed_str!(
+  /// [Home-Assistant template][template].
+  ///
+  /// [template]: https://www.home-assistant.io/docs/configuration/templating/
+  pub Template
+);
+
+typed_str!(
+  /// A device/entity name.
+  pub Name
+);
+
+typed_str!(
+  /// An ID that uniquely identifies this sensor. If two sensors have the same unique ID,
+  /// Home Assistant will raise an exception..
+  pub UniqueId
+);
+
 #[cfg(test)]
 mod tests {
   use std::borrow::Cow;

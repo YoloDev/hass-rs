@@ -1,6 +1,9 @@
 mod serde;
 
-use crate::exts::ValidateContextExt;
+use crate::{
+  exts::ValidateContextExt,
+  name::{Name, NameInvalidity},
+};
 use ::serde::{Deserialize, Serialize};
 use semval::{context::Context, Validate};
 use std::borrow::Cow;
@@ -25,7 +28,7 @@ pub struct Device<'a> {
   pub model: Option<Cow<'a, str>>,
 
   #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-  pub name: Option<Cow<'a, str>>,
+  pub name: Option<Name<'a>>,
 
   /// Suggest an area if the device isn’t in one yet.
   #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
@@ -58,6 +61,7 @@ impl<'a> Device<'a> {
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum DeviceInvalidity {
   Connection(usize, ConnectionInfoInvalidity),
+  Name(NameInvalidity),
 }
 
 impl<'a> Validate for Device<'a> {
@@ -66,6 +70,7 @@ impl<'a> Validate for Device<'a> {
   fn validate(&self) -> semval::Result<Self::Invalidity> {
     Context::new()
       .validate_iter(&*self.connections, DeviceInvalidity::Connection)
+      .validate_with_opt(&self.name, DeviceInvalidity::Name)
       .into()
   }
 }
@@ -172,7 +177,7 @@ mod tests {
         identifiers: Cow::Borrowed(&[Cow::Borrowed("id1"), Cow::Borrowed("id2")]),
         manufacturer: Some(Cow::Borrowed("mf")),
         model: Some(Cow::Borrowed("md")),
-        name: Some(Cow::Borrowed("na")),
+        name: Some(Name(Cow::Borrowed("na"))),
         suggested_area: Some(Cow::Borrowed("ar")),
         sw_version: Some(Cow::Borrowed("sw")),
         via_device: Some(Cow::Borrowed("vd")),
