@@ -1,6 +1,7 @@
 [workspace]
 members = [
-  "crates/proto",
+  "crates/discovery",
+  "crates/entity-state",
   #"crates/mqtt",
 ]
 resolver = "2"

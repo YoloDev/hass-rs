@@ -150,10 +150,10 @@ typed_str!(
 
 #[cfg(test)]
 mod tests {
-  use std::borrow::Cow;
-
   use super::*;
+  use assert_matches::assert_matches;
   use serde_test::{assert_tokens, Token};
+  use std::borrow::Cow;
 
   #[test]
   fn topic_ser_de() {
@@ -164,13 +164,13 @@ mod tests {
   fn topic_ser_de_borrowed() {
     let json = r#""test""#;
     let topic: Topic = serde_json::from_str(json).expect("should parse");
-    assert!(matches!(topic.0, Cow::Borrowed(_)));
+    assert_matches!(topic.0, Cow::Borrowed(_));
   }
 
   #[test]
   fn topic_ser_de_escaped() {
     let json = r#""\test""#;
     let topic: Topic = serde_json::from_str(json).expect("should parse");
-    assert!(matches!(topic.0, Cow::Owned(_)));
+    assert_matches!(topic.0, Cow::Owned(_));
   }
 }

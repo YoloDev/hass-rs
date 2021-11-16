@@ -86,6 +86,7 @@ impl<'a> Validate for Availability<'a> {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use assert_matches::assert_matches;
   use nameof::{name_of, name_of_type};
   use serde_test::{assert_tokens, Token};
   use std::borrow::Cow;
@@ -140,7 +141,7 @@ mod tests {
   fn deserialize_json_borrows() {
     let json = r##"{"topic":"the/topic"}"##;
     let availability: Availability = serde_json::from_str(json).expect("should parse");
-    assert!(matches!(availability.topic, Topic(Cow::Borrowed(_))));
+    assert_matches!(availability.topic, Topic(Cow::Borrowed(_)));
   }
 
   #[test]

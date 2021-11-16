@@ -4,7 +4,7 @@ pub(crate) mod string_wrappers;
 pub mod availability;
 pub mod device;
 pub mod device_class;
-pub mod discovery;
+pub mod entity;
 pub mod entity_category;
 pub mod icon;
 pub mod name;

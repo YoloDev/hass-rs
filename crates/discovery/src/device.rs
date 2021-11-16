@@ -107,6 +107,7 @@ impl<'a> Validate for ConnectionInfo<'a> {
 #[cfg(test)]
 mod tests {
   use super::*;
+  use assert_matches::assert_matches;
   use nameof::{name_of, name_of_type};
   use serde_test::{assert_tokens, Token};
 
@@ -133,8 +134,8 @@ mod tests {
   fn connection_info_borrows() {
     let json = r#"["ty","val"]"#;
     let connection_info: ConnectionInfo = serde_json::from_str(json).expect("should parse");
-    assert!(matches!(connection_info.type_name, Cow::Borrowed(_)));
-    assert!(matches!(connection_info.value, Cow::Borrowed(_)));
+    assert_matches!(connection_info.type_name, Cow::Borrowed(_));
+    assert_matches!(connection_info.value, Cow::Borrowed(_));
   }
 
   #[test]

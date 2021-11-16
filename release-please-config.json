@@ -20,6 +20,7 @@
     { "type": "deps", "section": "Dependencies" }
   ],
   "packages": {
-    "crates/proto": {}
+    "crates/discovery": {},
+    "crates/entity-state": {}
   }
 }
