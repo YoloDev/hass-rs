@@ -19,10 +19,12 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           command: manifest
-      - run: 'echo "paths_released: ${{ steps.release.outputs.paths_released }}"'
+      - run: |
+          echo "paths_released: ${{ steps.release.outputs.paths_released }}"
+          echo "release_created: ${{ steps.release.outputs.paths_released != '[]' }}"
 
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
+      release_created: ${{ steps.release.outputs.paths_released != '[]' }}
 
   release:
     name: Release to crates.io
