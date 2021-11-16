@@ -19,9 +19,10 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           command: manifest
-      - run: |
-          echo "paths_released: ${{ steps.release.outputs.paths_released }}"
-          echo "release_created: ${{ steps.release.outputs.paths_released != '[]' }}"
+
+      # - run: |
+      #     echo "paths_released: ${{ steps.release.outputs.paths_released }}"
+      #     echo "release_created: ${{ steps.release.outputs.paths_released != '[]' }}"
 
     outputs:
       release_created: ${{ steps.release.outputs.paths_released != '[]' }}
@@ -29,7 +30,7 @@ jobs:
   release:
     name: Release to crates.io
     runs-on: ubuntu-latest
-    # if: needs.release_please.outputs.release_created
+    if: needs.release_please.outputs.release_created
     needs: release_please
 
     concurrency:
