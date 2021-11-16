@@ -3,12 +3,14 @@ mod sensor;
 
 pub use attributes::{AttributeKey, AttributeValue, Attributes};
 
+pub trait EntityStateValue {}
+
 pub trait EntityState<'a, K, V>
 where
   K: AttributeKey<'a>,
   V: AttributeValue<'a>,
 {
-  type State;
+  type State: EntityStateValue;
 
   fn get(&self) -> &Self::State;
   fn get_mut(&mut self) -> &mut Self::State;

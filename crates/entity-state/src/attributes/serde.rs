@@ -217,12 +217,15 @@ mod tests {
 
   use assert_matches::assert_matches;
 
+  use crate::EntityStateValue;
+
   use super::*;
   use serde_test::{assert_tokens, Token};
 
   struct FakeEntityType;
+  impl EntityStateValue for FakeEntityType {}
   impl<'a> EntityState<'a, Cow<'a, str>, Cow<'a, str>> for FakeEntityType {
-    type State = ();
+    type State = FakeEntityType;
 
     fn get(&self) -> &Self::State {
       todo!()

@@ -1,9 +1,10 @@
-use crate::{AttributeKey, AttributeValue, Attributes, EntityState};
+use crate::{AttributeKey, AttributeValue, Attributes, EntityState, EntityStateValue};
 
 pub struct Sensor<'a, S, K, V>
 where
   K: AttributeKey<'a>,
   V: AttributeValue<'a>,
+  S: EntityStateValue,
 {
   state: S,
   attributes: Attributes<'a, K, V, Self>,
@@ -13,6 +14,7 @@ impl<'a, S, K, V> EntityState<'a, K, V> for Sensor<'a, S, K, V>
 where
   K: AttributeKey<'a>,
   V: AttributeValue<'a>,
+  S: EntityStateValue,
 {
   type State = S;
 
