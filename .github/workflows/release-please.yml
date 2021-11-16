@@ -30,7 +30,7 @@ jobs:
   release:
     name: Release to crates.io
     runs-on: ubuntu-latest
-    if: needs.release_please.outputs.release_created
+    if: needs.release_please.outputs.release_created == 'true'
     needs: release_please
 
     concurrency:
