@@ -1,6 +1,6 @@
 [package]
 name = "hass-entity-state"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 description = "home-assistant MQTT entity state types"
 license = "MIT"
