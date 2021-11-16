@@ -19,6 +19,7 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           command: manifest
+      - run: 'echo "release created: ${{ steps.release.outputs.release_created }}"'
 
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
