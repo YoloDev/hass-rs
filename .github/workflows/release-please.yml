@@ -5,7 +5,8 @@ on:
     branches: [main]
 
 jobs:
-  release-please:
+  release_please:
+    name: Release Please
     runs-on: ubuntu-latest
 
     permissions:
@@ -13,7 +14,35 @@ jobs:
       pull-requests: write
 
     steps:
-      - uses: GoogleCloudPlatform/release-please-action@v2
+      - id: release
+        uses: GoogleCloudPlatform/release-please-action@v2
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           command: manifest
+
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+
+  release:
+    name: Release to crates.io
+    runs-on: ubuntu-latest
+    if: needs.release_please.outputs.release_created
+    needs: release_please
+
+    concurrency:
+      group: release
+
+    steps:
+      - name: Configure git
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.symlinks true
+          git config --global fetch.parallel 32
+
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install cargo plugins
+        run: cargo install cargo-workspaces
+      - name: Publish
+        run: cargo workspaces publish --from-git --yes --token "${{ secrets.CRATES_IO_TOKEN }}"
