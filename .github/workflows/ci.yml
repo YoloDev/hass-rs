@@ -43,26 +43,26 @@ jobs:
           command: test
           args: --all --all-features
 
-  # release:
-  #   name: Release
-  #   runs-on: ubuntu-latest
-  #   if: github.ref == 'refs/heads/main'
-  #   needs: test
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    needs: test
 
-  #   concurrency:
-  #     group: release
+    concurrency:
+      group: release
 
-  #   steps:
-  #     - name: Configure git
-  #       run: |
-  #         git config --global core.autocrlf false
-  #         git config --global core.symlinks true
-  #         git config --global fetch.parallel 32
+    steps:
+      - name: Configure git
+        run: |
+          git config --global core.autocrlf false
+          git config --global core.symlinks true
+          git config --global fetch.parallel 32
 
-  #     - uses: actions/checkout@v2
-  #     - uses: dtolnay/rust-toolchain@stable
-  #     - uses: Swatinem/rust-cache@v1
-  #     - name: Install cargo plugins
-  #       run: cargo install cargo-workspaces
-  #     - name: Publish
-  #       run: cargo workspaces publish --from-git --yes --token "${{ secrets.CRATES_IO_TOKEN }}"
+      - uses: actions/checkout@v2
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v1
+      - name: Install cargo plugins
+        run: cargo install cargo-workspaces
+      - name: Publish
+        run: cargo workspaces publish --from-git --yes --token "${{ secrets.CRATES_IO_TOKEN }}"
