@@ -1,0 +1,15 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["local>YoloDev/renovate-config"],
+  "regexManagers": [
+    {
+      "fileMatch": ["^\\.github/workflows/"],
+      "matchStrings": [
+        "SCCACHE_VERSION\\s*:\\s*\"(?<currentValue>\\d+\\.\\d+\\.\\d+)\""
+      ],
+      "depNameTemplate": "sccache",
+      "lookupNameTemplate": "mozilla/sccache",
+      "datasourceTemplate": "github-releases"
+    }
+  ]
+}
