@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - id: release
-        uses: GoogleCloudPlatform/release-please-action@v2
+        uses: GoogleCloudPlatform/release-please-action@v3
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           command: manifest
