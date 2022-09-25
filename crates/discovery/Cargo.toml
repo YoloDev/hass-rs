@@ -11,7 +11,7 @@ repository = "https://github.com/YoloDev/hass-rs"
 
 [dependencies]
 nameof = "1"
-semval = "0.1"
+semval = "0.4"
 serde = { version = "1", features = ["derive"] }
 serde_repr = "0.1"
 
