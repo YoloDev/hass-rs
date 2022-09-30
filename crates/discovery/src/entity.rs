@@ -15,8 +15,10 @@ use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
 mod sensor;
+mod switch;
 
 pub use sensor::Sensor;
+pub use switch::Switch;
 
 /// Discoverable MQTT device configuration.
 ///
