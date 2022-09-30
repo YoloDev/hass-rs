@@ -38,11 +38,20 @@ pub struct Device<'a> {
   #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
   pub sw_version: Option<Cow<'a, str>>,
 
+  /// The hardware version of the device.
+  #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
+  pub hw_version: Option<Cow<'a, str>>,
+
   /// Identifier of a device that routes messages between this device and Home Assistant.
   /// Examples of such devices are hubs, or parent devices of a sub-device. This is used
   /// to show device topology in Home Assistant.
   #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
   pub via_device: Option<Cow<'a, str>>,
+
+  /// A link to the webpage that can manage the configuration of this device.
+  /// Can be either an HTTP or HTTPS link.
+  #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
+  pub configuration_url: Option<Cow<'a, str>>,
 }
 
 impl<'a> Device<'a> {
@@ -54,7 +63,9 @@ impl<'a> Device<'a> {
       && self.name.is_none()
       && self.suggested_area.is_none()
       && self.sw_version.is_none()
+      && self.hw_version.is_none()
       && self.via_device.is_none()
+      && self.configuration_url.is_none()
   }
 }
 
@@ -149,7 +160,9 @@ mod tests {
         name: None,
         suggested_area: None,
         sw_version: None,
+        hw_version: None,
         via_device: None,
+        configuration_url: None,
       },
       &[
         Token::Struct {
@@ -181,12 +194,14 @@ mod tests {
         name: Some(Name(Cow::Borrowed("na"))),
         suggested_area: Some(Cow::Borrowed("ar")),
         sw_version: Some(Cow::Borrowed("sw")),
+        hw_version: Some(Cow::Borrowed("hw")),
         via_device: Some(Cow::Borrowed("vd")),
+        configuration_url: Some(Cow::Borrowed("cu")),
       },
       &[
         Token::Struct {
           name: "Device",
-          len: 8,
+          len: 10,
         },
         Token::Str(name_of!(connections in Device)),
         Token::Seq { len: Some(2) },
@@ -225,9 +240,15 @@ mod tests {
         Token::Str(name_of!(sw_version in Device)),
         Token::Some,
         Token::Str("sw"),
+        Token::Str(name_of!(hw_version in Device)),
+        Token::Some,
+        Token::Str("hw"),
         Token::Str(name_of!(via_device in Device)),
         Token::Some,
         Token::Str("vd"),
+        Token::Str(name_of!(configuration_url in Device)),
+        Token::Some,
+        Token::Str("cu"),
         Token::StructEnd,
       ],
     )
