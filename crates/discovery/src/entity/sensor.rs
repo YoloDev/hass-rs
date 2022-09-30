@@ -15,7 +15,6 @@ use std::{borrow::Cow, num::NonZeroU32};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Sensor<'a> {
   /// A list of MQTT topics subscribed to receive availability (online/offline) updates.
-  /// Must not be used together with `availability_topic`.
   #[serde(borrow, default, skip_serializing_if = "<[Availability]>::is_empty")]
   pub availability: Cow<'a, [Availability<'a>]>,
 
@@ -23,16 +22,6 @@ pub struct Sensor<'a> {
   /// to set the entity to `available`.
   #[serde(default, skip_serializing_if = "AvailabilityMode::is_default")]
   pub availability_mode: AvailabilityMode,
-
-  /// Defines a template to extract device’s availability from the `availability_topic`.
-  /// To determine the devices’s availability result of this template will be compared
-  /// to `payload_available` and `payload_not_available`.
-  #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-  pub availability_template: Option<Template<'a>>,
-
-  /// The MQTT topic subscribed to receive availability (online/offline) updates.
-  #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-  pub availability_topic: Option<Topic<'a>>,
 
   /// Information about the device this sensor is a part of to tie it into the device registry.
   /// Only works through MQTT discovery and when `unique_id` is set.
@@ -101,16 +90,6 @@ pub struct Sensor<'a> {
   /// Used instead of `name` for automatic generation of `entity_id`.
   #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
   pub object_id: Option<Cow<'a, str>>,
-
-  /// The payload that represents the available state.
-  /// Defaults to `"online"`
-  #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-  pub payload_available: Option<Cow<'a, str>>,
-
-  /// The payload that represents the unavailable state.
-  /// Defaults to `"offline"`
-  #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-  pub payload_not_available: Option<Cow<'a, str>>,
 
   /// The maximum QoS level of the state topic.
   #[serde(default, skip_serializing_if = "MqttQoS::is_default")]
