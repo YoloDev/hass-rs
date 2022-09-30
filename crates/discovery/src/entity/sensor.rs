@@ -1,7 +1,9 @@
 use crate::{
+  exts::ValidateContextExt,
   entity::{Entity, EntityInvalidity},
   device_class::DeviceClass, state_class::StateClass, template::Template, topic::Topic,
 };
+use semval::{context::Context, Validate, ValidationResult};
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, num::NonZeroU32};
 
@@ -60,4 +62,17 @@ pub struct Sensor<'a> {
   /// [template]: https://www.home-assistant.io/docs/configuration/templating/#processing-incoming-data
   #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
   pub value_template: Option<Template<'a>>,
+}
+
+impl<'a> Validate for Sensor<'a> {
+  type Invalidity = EntityInvalidity;
+
+  fn validate(&self) -> ValidationResult<Self::Invalidity> {
+    Context::new()
+      .validate_with(&self.entity, |v| v)
+      .validate_with_opt(&self.last_reset_value_template, EntityInvalidity::Template)
+      .validate_with(&self.state_topic, EntityInvalidity::Topic)
+      .validate_with_opt(&self.value_template, EntityInvalidity::Template)
+      .into()
+  }
 }
