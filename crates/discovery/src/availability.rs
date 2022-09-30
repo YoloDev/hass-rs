@@ -6,15 +6,36 @@ use crate::{
 use semval::{context::Context, Validate};
 use serde::{Deserialize, Serialize};
 
+/// When availability is configured, this controls the conditions needed to set the entity to available.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum AvailabilityMode {
   /// If set to all, `payload_available` must be received on all configured availability topics before the entity is marked as online.
+  #[serde(rename = "all")]
   All,
 
   /// If set to any, `payload_available` must be received on at least one configured availability topic before the entity is marked as online.
+  #[serde(rename = "any")]
   Any,
 
   /// If set to latest, the last `payload_available` or `payload_not_available` received on any configured availability topic controls the availability.
+  ///
+  /// This is the default mode if not specified.
+  #[serde(rename = "latest")]
   Latest,
+}
+
+impl AvailabilityMode {
+  #[inline]
+  pub const fn is_default(&self) -> bool {
+    matches!(self, Self::Latest)
+  }
+}
+
+impl Default for AvailabilityMode {
+  #[inline]
+  fn default() -> Self {
+    Self::Latest
+  }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
