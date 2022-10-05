@@ -4,7 +4,7 @@ use crate::{
   template::{Template, TemplateInvalidity},
   topic::{Topic, TopicInvalidity},
 };
-use semval::{context::Context, Validate};
+use semval::{context::Context, Validate, ValidationResult};
 use serde::{Deserialize, Serialize};
 
 /// When availability is configured, this controls the conditions needed to set the entity to available.
@@ -100,7 +100,7 @@ pub enum AvailabilityDataInvalidity {
 impl<'a> Validate for Availability<'a> {
   type Invalidity = AvailabilityDataInvalidity;
 
-  fn validate(&self) -> semval::Result<Self::Invalidity> {
+  fn validate(&self) -> ValidationResult<Self::Invalidity> {
     Context::new()
       .validate_with(&self.topic, AvailabilityDataInvalidity::Topic)
       .validate_with_opt(

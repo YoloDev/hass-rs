@@ -1,4 +1,4 @@
-use semval::{context::Context, Validate};
+use semval::{context::Context, Validate, ValidationResult};
 
 pub use crate::string_wrappers::Icon;
 
@@ -10,7 +10,7 @@ pub enum IconInvalidity {
 impl<'a> Validate for Icon<'a> {
   type Invalidity = IconInvalidity;
 
-  fn validate(&self) -> semval::Result<Self::Invalidity> {
+  fn validate(&self) -> ValidationResult<Self::Invalidity> {
     Context::new()
       .invalidate_if(self.is_empty(), IconInvalidity::Empty)
       .into()

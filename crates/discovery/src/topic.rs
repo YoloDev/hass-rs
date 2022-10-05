@@ -1,4 +1,4 @@
-use semval::{context::Context, Validate};
+use semval::{context::Context, Validate, ValidationResult};
 
 pub use crate::string_wrappers::Topic;
 
@@ -11,7 +11,7 @@ pub enum TopicInvalidity {
 impl<'a> Validate for Topic<'a> {
   type Invalidity = TopicInvalidity;
 
-  fn validate(&self) -> semval::Result<Self::Invalidity> {
+  fn validate(&self) -> ValidationResult<Self::Invalidity> {
     Context::new()
       .invalidate_if(self.is_empty(), TopicInvalidity::Empty)
       .invalidate_if(

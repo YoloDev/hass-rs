@@ -5,7 +5,7 @@ use crate::{
   name::{Name, NameInvalidity},
 };
 use ::serde::{Deserialize, Serialize};
-use semval::{context::Context, Validate};
+use semval::{context::Context, Validate, ValidationResult};
 use std::borrow::Cow;
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -78,7 +78,7 @@ pub enum DeviceInvalidity {
 impl<'a> Validate for Device<'a> {
   type Invalidity = DeviceInvalidity;
 
-  fn validate(&self) -> semval::Result<Self::Invalidity> {
+  fn validate(&self) -> ValidationResult<Self::Invalidity> {
     Context::new()
       .validate_iter(&*self.connections, DeviceInvalidity::Connection)
       .validate_with_opt(&self.name, DeviceInvalidity::Name)
@@ -104,7 +104,7 @@ pub enum ConnectionInfoInvalidity {
 impl<'a> Validate for ConnectionInfo<'a> {
   type Invalidity = ConnectionInfoInvalidity;
 
-  fn validate(&self) -> semval::Result<Self::Invalidity> {
+  fn validate(&self) -> ValidationResult<Self::Invalidity> {
     Context::new()
       .invalidate_if(
         self.type_name.is_empty(),

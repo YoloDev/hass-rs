@@ -1,4 +1,4 @@
-use semval::{context::Context, Validate};
+use semval::{context::Context, Validate, ValidationResult};
 
 pub use crate::string_wrappers::Name;
 
@@ -10,7 +10,7 @@ pub enum NameInvalidity {
 impl<'a> Validate for Name<'a> {
   type Invalidity = NameInvalidity;
 
-  fn validate(&self) -> semval::Result<Self::Invalidity> {
+  fn validate(&self) -> ValidationResult<Self::Invalidity> {
     Context::new()
       .invalidate_if(self.is_empty(), NameInvalidity::Empty)
       .into()
