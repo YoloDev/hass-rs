@@ -1,20 +1,42 @@
 use crate::{
   exts::ValidateContextExt,
   payload::{Payload, PayloadInvalidity},
+  template::{Template, TemplateInvalidity},
   topic::{Topic, TopicInvalidity},
 };
 use semval::{context::Context, Validate};
 use serde::{Deserialize, Serialize};
 
+/// When availability is configured, this controls the conditions needed to set the entity to available.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum AvailabilityMode {
   /// If set to all, `payload_available` must be received on all configured availability topics before the entity is marked as online.
+  #[serde(rename = "all")]
   All,
 
   /// If set to any, `payload_available` must be received on at least one configured availability topic before the entity is marked as online.
+  #[serde(rename = "any")]
   Any,
 
   /// If set to latest, the last `payload_available` or `payload_not_available` received on any configured availability topic controls the availability.
+  ///
+  /// This is the default mode if not specified.
+  #[serde(rename = "latest")]
   Latest,
+}
+
+impl AvailabilityMode {
+  #[inline]
+  pub const fn is_default(&self) -> bool {
+    matches!(self, Self::Latest)
+  }
+}
+
+impl Default for AvailabilityMode {
+  #[inline]
+  fn default() -> Self {
+    Self::Latest
+  }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -34,6 +56,13 @@ pub struct Availability<'a> {
   /// The default (used if `None`) is `offline`.
   #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
   pub payload_not_available: Option<Payload<'a>>,
+
+  /// Defines a template to extract device’s availability from the topic.
+  ///
+  /// To determine the devices’s availability result of this template
+  /// will be compared to payload_available and payload_not_available.
+  #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
+  pub value_template: Option<Template<'a>>,
 }
 
 impl<'a> Availability<'a> {
@@ -42,6 +71,7 @@ impl<'a> Availability<'a> {
       topic: topic.into(),
       payload_available: None,
       payload_not_available: None,
+      value_template: None,
     }
   }
 
@@ -54,6 +84,7 @@ impl<'a> Availability<'a> {
       topic: topic.into(),
       payload_available: Some(available_payload.into()),
       payload_not_available: Some(not_available_payload.into()),
+      value_template: None,
     }
   }
 }
@@ -63,6 +94,7 @@ pub enum AvailabilityDataInvalidity {
   Topic(TopicInvalidity),
   PayloadAvailable(PayloadInvalidity),
   PayloadNotAvailable(PayloadInvalidity),
+  ValueTemplate(TemplateInvalidity),
 }
 
 impl<'a> Validate for Availability<'a> {
@@ -78,6 +110,10 @@ impl<'a> Validate for Availability<'a> {
       .validate_with_opt(
         &self.payload_not_available,
         AvailabilityDataInvalidity::PayloadNotAvailable,
+      )
+      .validate_with_opt(
+        &self.value_template,
+        AvailabilityDataInvalidity::ValueTemplate,
       )
       .into()
   }
@@ -98,6 +134,7 @@ mod tests {
         topic: Topic(Cow::Borrowed("the/topic")),
         payload_available: None,
         payload_not_available: None,
+        value_template: None,
       },
       &[
         Token::Struct {
@@ -118,11 +155,12 @@ mod tests {
         topic: Topic(Cow::Borrowed("the/topic")),
         payload_available: Some(Payload(Cow::Borrowed("available"))),
         payload_not_available: Some(Payload(Cow::Borrowed("not_available"))),
+        value_template: Some(Template(Cow::Borrowed("{{value}}"))),
       },
       &[
         Token::Struct {
           name: name_of_type!(Availability),
-          len: 3,
+          len: 4,
         },
         Token::Str(name_of!(topic in Availability)),
         Token::Str("the/topic"),
@@ -132,6 +170,9 @@ mod tests {
         Token::Str(name_of!(payload_not_available in Availability)),
         Token::Some,
         Token::Str("not_available"),
+        Token::Str(name_of!(value_template in Availability)),
+        Token::Some,
+        Token::Str("{{value}}"),
         Token::StructEnd,
       ],
     )
@@ -150,6 +191,7 @@ mod tests {
       topic: Topic::from("topic"),
       payload_available: Some(Payload::from("")),
       payload_not_available: None,
+      value_template: None,
     }
     .validate()
     .expect_err("should be invalid")
@@ -170,6 +212,7 @@ mod tests {
       topic: Topic::from("topic"),
       payload_available: None,
       payload_not_available: Some(Payload::from("")),
+      value_template: None,
     }
     .validate()
     .expect_err("should be invalid")
@@ -190,6 +233,7 @@ mod tests {
       topic: Topic::from(""),
       payload_available: None,
       payload_not_available: None,
+      value_template: None,
     }
     .validate()
     .expect_err("should be invalid")

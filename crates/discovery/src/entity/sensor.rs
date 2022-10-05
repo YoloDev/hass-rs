@@ -1,4 +1,5 @@
 use crate::{
+  availability::{Availability, AvailabilityMode}, device::Device,
   device_class::DeviceClass, entity_category::EntityCategory, icon::Icon, name::Name, qos::MqttQoS,
   state_class::StateClass, template::Template, topic::Topic, unique_id::UniqueId,
 };
@@ -13,6 +14,21 @@ use std::{borrow::Cow, num::NonZeroU32};
 /// See: <https://www.home-assistant.io/integrations/sensor.mqtt/>
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Sensor<'a> {
+  /// A list of MQTT topics subscribed to receive availability (online/offline) updates.
+  #[serde(borrow, default, skip_serializing_if = "<[Availability]>::is_empty")]
+  pub availability: Cow<'a, [Availability<'a>]>,
+
+  /// When `availability` is configured, this controls the conditions needed
+  /// to set the entity to `available`.
+  #[serde(default, skip_serializing_if = "AvailabilityMode::is_default")]
+  pub availability_mode: AvailabilityMode,
+
+  /// Information about the device this sensor is a part of to tie it into the device registry.
+  /// Only works through MQTT discovery and when `unique_id` is set.
+  /// At least one of identifiers or connections must be present to identify the device.
+  #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
+  pub device: Option<Device<'a>>,
+
   /// The [type/class][device_class] of the sensor to set
   /// the icon in the frontend.
   ///
@@ -70,6 +86,10 @@ pub struct Sensor<'a> {
   /// The name of the MQTT sensor. Default: `MQTT Sensor`.
   #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
   pub name: Option<Name<'a>>,
+
+  /// Used instead of `name` for automatic generation of `entity_id`.
+  #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
+  pub object_id: Option<Cow<'a, str>>,
 
   /// The maximum QoS level of the state topic.
   #[serde(default, skip_serializing_if = "MqttQoS::is_default")]
