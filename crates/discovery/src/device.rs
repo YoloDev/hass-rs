@@ -8,7 +8,7 @@ use ::serde::{Deserialize, Serialize};
 use semval::{context::Context, Validate};
 use std::borrow::Cow;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Device<'a> {
   /// A list of connections of the device to the outside world as a list of tuples [connection_type, connection_identifier].
   /// For example the MAC address of a network interface: "connections": [["mac", "02:5b:26:a8:dc:12"]].
