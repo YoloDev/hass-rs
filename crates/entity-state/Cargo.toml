@@ -11,10 +11,10 @@ repository = "https://github.com/YoloDev/hass-rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-paste = "1"
-serde = { version = "1" }
+paste = { workspace = true }
+serde = { workspace = true }
 
 [dev-dependencies]
-assert_matches = "1"
-serde_json = "1"
-serde_test = "1"
+assert_matches = { workspace = true }
+serde_json = { workspace = true }
+serde_test = { workspace = true }

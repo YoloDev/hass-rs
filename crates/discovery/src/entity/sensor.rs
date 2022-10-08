@@ -1,7 +1,11 @@
 use crate::{
-  exts::ValidateContextExt,
+  availability::Availability,
+  device_class::DeviceClass,
   entity::{Entity, EntityInvalidity},
-  device_class::DeviceClass, state_class::StateClass, template::Template, topic::Topic,
+  exts::ValidateContextExt,
+  state_class::StateClass,
+  template::Template,
+  topic::Topic,
 };
 use semval::{context::Context, Validate, ValidationResult};
 use serde::{Deserialize, Serialize};
@@ -74,5 +78,117 @@ impl<'a> Validate for Sensor<'a> {
       .validate_with(&self.state_topic, EntityInvalidity::Topic)
       .validate_with_opt(&self.value_template, EntityInvalidity::Template)
       .into()
+  }
+}
+pub struct SensorBuilder<'a, T> {
+  entity: Entity<'a>,
+  device_class: DeviceClass,
+  expire_after: Option<NonZeroU32>,
+  force_update: Option<bool>,
+  last_reset_value_template: Option<Template<'a>>,
+  state_class: StateClass,
+  state_topic: T,
+  unit_of_measurement: Option<Cow<'a, str>>,
+  value_template: Option<Template<'a>>,
+}
+
+impl<'a> Sensor<'a> {
+  pub fn builder() -> SensorBuilder<'a, ()> {
+    SensorBuilder {
+      entity: Default::default(),
+      device_class: Default::default(),
+      expire_after: Default::default(),
+      force_update: Default::default(),
+      last_reset_value_template: Default::default(),
+      state_class: Default::default(),
+      state_topic: (),
+      unit_of_measurement: Default::default(),
+      value_template: Default::default(),
+    }
+  }
+}
+
+impl<'a, T> SensorBuilder<'a, T> {
+  // TODO: Provide setters for all the fileds
+  pub fn entity(mut self, entity: Entity<'a>) -> SensorBuilder<'a, T> {
+    self.entity = entity;
+    self
+  }
+
+  pub fn device_class(mut self, device_class: DeviceClass) -> SensorBuilder<'a, T> {
+    self.device_class = device_class;
+    self
+  }
+
+  pub fn expire_after(mut self, expire_after: Option<NonZeroU32>) -> SensorBuilder<'a, T> {
+    self.expire_after = expire_after;
+    self
+  }
+
+  pub fn force_update(mut self, force_update: Option<bool>) -> SensorBuilder<'a, T> {
+    self.force_update = force_update;
+    self
+  }
+
+  pub fn last_reset_value_template(
+    mut self,
+    last_reset_value_template: Option<Template<'a>>,
+  ) -> SensorBuilder<'a, T> {
+    self.last_reset_value_template = last_reset_value_template;
+    self
+  }
+
+  pub fn state_class(mut self, state_class: StateClass) -> SensorBuilder<'a, T> {
+    self.state_class = state_class;
+    self
+  }
+
+  pub fn state_topic<U>(self, state_topic: U) -> SensorBuilder<'a, U>
+  where
+    U: Into<Topic<'a>>,
+  {
+    SensorBuilder {
+      entity: self.entity,
+      device_class: self.device_class,
+      expire_after: self.expire_after,
+      force_update: self.force_update,
+      last_reset_value_template: self.last_reset_value_template,
+      state_class: self.state_class,
+      state_topic,
+      unit_of_measurement: self.unit_of_measurement,
+      value_template: self.value_template,
+    }
+  }
+
+  pub fn unit_of_measurement(
+    mut self,
+    unit_of_measurement: Option<Cow<'a, str>>,
+  ) -> SensorBuilder<'a, T> {
+    self.unit_of_measurement = unit_of_measurement;
+    self
+  }
+
+  pub fn value_template(mut self, value_template: Option<Template<'a>>) -> SensorBuilder<'a, T> {
+    self.value_template = value_template;
+    self
+  }
+}
+
+impl<'a, T> SensorBuilder<'a, T>
+where
+  T: Into<Topic<'a>>,
+{
+  pub fn build(self) -> Sensor<'a> {
+    Sensor {
+      entity: self.entity,
+      device_class: self.device_class,
+      expire_after: self.expire_after,
+      force_update: self.force_update,
+      last_reset_value_template: self.last_reset_value_template,
+      state_class: self.state_class,
+      state_topic: self.state_topic.into(),
+      unit_of_measurement: self.unit_of_measurement,
+      value_template: self.value_template,
+    }
   }
 }

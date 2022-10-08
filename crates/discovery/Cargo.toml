@@ -10,12 +10,15 @@ repository = "https://github.com/YoloDev/hass-rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-nameof = "1"
-semval = "0.4"
-serde = { version = "1", features = ["derive"] }
-serde_repr = "0.1"
+error-stack = { workspace = true }
+nameof = { workspace = true }
+semval = { workspace = true }
+serde = { workspace = true }
+serde_repr = { workspace = true }
+
+hass-mqtt-discovery-macros = { version = "0.0.0", path = "../discovery-macros" }
 
 [dev-dependencies]
-assert_matches = "1"
-serde_json = "1"
-serde_test = "1"
+assert_matches = { workspace = true }
+serde_json = { workspace = true }
+serde_test = { workspace = true }

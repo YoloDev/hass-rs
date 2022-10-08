@@ -15,3 +15,4 @@ pub mod state_class;
 pub mod template;
 pub mod topic;
 pub mod unique_id;
+pub mod validation;
