@@ -14,9 +14,11 @@ use semval::{context::Context, Validate, ValidationResult};
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
+mod binary_sensor;
 mod sensor;
 mod switch;
 
+pub use binary_sensor::BinarySensor;
 pub use sensor::Sensor;
 pub use switch::Switch;
 
