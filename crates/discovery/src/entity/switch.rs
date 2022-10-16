@@ -9,14 +9,14 @@ use serde::{Deserialize, Serialize};
 /// The mqtt switch platform lets you control your MQTT enabled switches.
 ///
 /// See: <https://www.home-assistant.io/integrations/switch.mqtt/>
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Switch<'a> {
   #[serde(borrow, flatten)]
   pub entity: Entity<'a>,
 
   /// The MQTT topic to publish commands to change the switch state.
-  #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-  pub command_topic: Option<Topic<'a>>,
+  #[serde(borrow)]
+  pub command_topic: Topic<'a>,
 
   /// The [type/class][device_class] of the switch to set the icon in the frontend.
   ///
@@ -83,7 +83,7 @@ impl<'a> Validate for Switch<'a> {
   fn validate(&self) -> ValidationResult<Self::Invalidity> {
     Context::new()
       .validate_with(&self.entity, |v| v)
-      .validate_with_opt(&self.command_topic, EntityInvalidity::Topic)
+      .validate_with(&self.command_topic, EntityInvalidity::Topic)
       .validate_with_opt(&self.payload_on, EntityInvalidity::Payload)
       .validate_with_opt(&self.payload_off, EntityInvalidity::Payload)
       .validate_with_opt(&self.state_topic, EntityInvalidity::Topic)
