@@ -10,6 +10,7 @@ pub mod icon;
 pub mod name;
 pub mod payload;
 pub mod qos;
+pub mod source_type;
 pub mod state_class;
 pub mod template;
 pub mod topic;
