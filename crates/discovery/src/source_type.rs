@@ -12,6 +12,7 @@ pub enum SourceType {
   #[serde(rename = "bluetooth")]
   Bluetooth,
 
+  /// Bluetooth Low Energy
   #[serde(rename = "bluetooth_le")]
   BluetoothLE,
 }
