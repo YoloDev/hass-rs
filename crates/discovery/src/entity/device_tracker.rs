@@ -1,7 +1,7 @@
 use crate::{
   exts::ValidateContextExt,
   entity::{Entity, EntityInvalidity},
-  source_type::SourceType, payload::Payload, template::Template, topic::Topic,
+  device_tracker_source_type::DeviceTrackerSourceType, payload::Payload, template::Template, topic::Topic,
 };
 use semval::{context::Context, Validate, ValidationResult};
 use serde::{Deserialize, Serialize};
@@ -30,7 +30,7 @@ pub struct DeviceTracker<'a> {
   ///
   /// [person]: https://www.home-assistant.io/integrations/person/
   #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub source_type: Option<SourceType>,
+  pub source_type: Option<DeviceTrackerSourceType>,
 
   /// The MQTT topic subscribed to receive device tracker state changes.
   #[serde(borrow)]
