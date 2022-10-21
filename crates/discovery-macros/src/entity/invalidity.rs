@@ -1,5 +1,5 @@
 use super::EntityStruct;
-use crate::util::StripLifetimes;
+use crate::util::ModifyLifetimes;
 use darling::ToTokens;
 use proc_macro2::TokenStream;
 use quote::quote;

@@ -5,12 +5,15 @@ use syn::{
   TypeArray, TypeGroup, TypeParamBound, TypeParen, TypePath, TypeReference, TypeSlice, TypeTuple,
 };
 
-fn static_lifetime() -> Lifetime {
-  Lifetime::new("'static", Span::call_site())
-}
+pub(crate) trait ModifyLifetimes: Clone {
+  fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self>;
 
-pub(crate) trait StripLifetimes: Clone {
-  fn make_lifetimes_static<'a>(&'a self) -> Cow<'a, Self>;
+  fn make_lifetimes_static(&self) -> Cow<Self> {
+    self.map_lifetimes(&mut |_| Lifetime::new("'static", Span::call_site()))
+  }
+  fn make_lifetimes_inferred(&self) -> Cow<Self> {
+    self.map_lifetimes(&mut |_| Lifetime::new("'_", Span::call_site()))
+  }
 }
 
 trait TypeVariantCowExt<'a>: Clone {
@@ -26,24 +29,24 @@ impl<'a, T: Into<Type> + Clone> TypeVariantCowExt<'a> for Cow<'a, T> {
   }
 }
 
-impl StripLifetimes for Type {
-  fn make_lifetimes_static<'a>(&'a self) -> Cow<'a, Self> {
+impl ModifyLifetimes for Type {
+  fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self> {
     match self {
-      Type::Array(v) => v.make_lifetimes_static().or_original(self),
-      Type::Group(v) => v.make_lifetimes_static().or_original(self),
-      Type::Paren(v) => v.make_lifetimes_static().or_original(self),
-      Type::Path(v) => v.make_lifetimes_static().or_original(self),
-      Type::Reference(v) => v.make_lifetimes_static().or_original(self),
-      Type::Slice(v) => v.make_lifetimes_static().or_original(self),
-      Type::Tuple(v) => v.make_lifetimes_static().or_original(self),
+      Type::Array(v) => v.map_lifetimes(f).or_original(self),
+      Type::Group(v) => v.map_lifetimes(f).or_original(self),
+      Type::Paren(v) => v.map_lifetimes(f).or_original(self),
+      Type::Path(v) => v.map_lifetimes(f).or_original(self),
+      Type::Reference(v) => v.map_lifetimes(f).or_original(self),
+      Type::Slice(v) => v.map_lifetimes(f).or_original(self),
+      Type::Tuple(v) => v.map_lifetimes(f).or_original(self),
       _ => Cow::Borrowed(self),
     }
   }
 }
 
-impl StripLifetimes for TypeArray {
-  fn make_lifetimes_static<'a>(&'a self) -> Cow<'a, Self> {
-    match self.elem.make_lifetimes_static() {
+impl ModifyLifetimes for TypeArray {
+  fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self> {
+    match self.elem.map_lifetimes(f) {
       Cow::Borrowed(_) => Cow::Borrowed(self),
       Cow::Owned(ty) => Cow::Owned(TypeArray {
         elem: Box::new(ty),
@@ -53,9 +56,9 @@ impl StripLifetimes for TypeArray {
   }
 }
 
-impl StripLifetimes for TypeGroup {
-  fn make_lifetimes_static<'a>(&'a self) -> Cow<'a, Self> {
-    match self.elem.make_lifetimes_static() {
+impl ModifyLifetimes for TypeGroup {
+  fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self> {
+    match self.elem.map_lifetimes(f) {
       Cow::Borrowed(_) => Cow::Borrowed(self),
       Cow::Owned(ty) => Cow::Owned(TypeGroup {
         elem: Box::new(ty),
@@ -65,9 +68,9 @@ impl StripLifetimes for TypeGroup {
   }
 }
 
-impl StripLifetimes for TypeParen {
-  fn make_lifetimes_static<'a>(&'a self) -> Cow<'a, Self> {
-    match self.elem.make_lifetimes_static() {
+impl ModifyLifetimes for TypeParen {
+  fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self> {
+    match self.elem.map_lifetimes(f) {
       Cow::Borrowed(_) => Cow::Borrowed(self),
       Cow::Owned(ty) => Cow::Owned(TypeParen {
         elem: Box::new(ty),
@@ -77,15 +80,15 @@ impl StripLifetimes for TypeParen {
   }
 }
 
-impl StripLifetimes for TypeReference {
-  fn make_lifetimes_static<'a>(&'a self) -> Cow<'a, Self> {
-    match self.lifetime {
-      Some(_) => Cow::Owned(TypeReference {
-        lifetime: Some(static_lifetime()),
-        elem: Box::new(self.elem.make_lifetimes_static().into_owned()),
+impl ModifyLifetimes for TypeReference {
+  fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self> {
+    match &self.lifetime {
+      Some(l) => Cow::Owned(TypeReference {
+        lifetime: Some(f(l)),
+        elem: Box::new(self.elem.map_lifetimes(f).into_owned()),
         ..self.clone()
       }),
-      None => match self.elem.make_lifetimes_static() {
+      None => match self.elem.map_lifetimes(f) {
         Cow::Borrowed(_) => Cow::Borrowed(self),
         Cow::Owned(ty) => Cow::Owned(TypeReference {
           elem: Box::new(ty),
@@ -96,9 +99,9 @@ impl StripLifetimes for TypeReference {
   }
 }
 
-impl StripLifetimes for TypeSlice {
-  fn make_lifetimes_static<'a>(&'a self) -> Cow<'a, Self> {
-    match self.elem.make_lifetimes_static() {
+impl ModifyLifetimes for TypeSlice {
+  fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self> {
+    match self.elem.map_lifetimes(f) {
       Cow::Borrowed(_) => Cow::Borrowed(self),
       Cow::Owned(ty) => Cow::Owned(TypeSlice {
         elem: Box::new(ty),
@@ -108,14 +111,11 @@ impl StripLifetimes for TypeSlice {
   }
 }
 
-impl StripLifetimes for TypePath {
-  fn make_lifetimes_static<'a>(&'a self) -> Cow<'a, Self> {
-    let qself_ty = self
-      .qself
-      .as_ref()
-      .map(|v| (v.ty.make_lifetimes_static(), v));
+impl ModifyLifetimes for TypePath {
+  fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self> {
+    let qself_ty = self.qself.as_ref().map(|v| (v.ty.map_lifetimes(f), v));
 
-    let path = self.path.make_lifetimes_static();
+    let path = self.path.map_lifetimes(f);
     match (qself_ty, path) {
       (Some((Cow::Borrowed(_), _)) | None, Cow::Borrowed(_)) => Cow::Borrowed(self),
       (qself_ty, path) => Cow::Owned(TypePath {
@@ -129,13 +129,9 @@ impl StripLifetimes for TypePath {
   }
 }
 
-impl StripLifetimes for TypeTuple {
-  fn make_lifetimes_static<'a>(&'a self) -> Cow<'a, Self> {
-    let elems: Vec<_> = self
-      .elems
-      .iter()
-      .map(|v| v.make_lifetimes_static())
-      .collect();
+impl ModifyLifetimes for TypeTuple {
+  fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self> {
+    let elems: Vec<_> = self.elems.iter().map(|v| v.map_lifetimes(f)).collect();
     if !elems.iter().any(|v| matches!(v, Cow::Owned(_))) {
       Cow::Borrowed(self)
     } else {
@@ -147,27 +143,25 @@ impl StripLifetimes for TypeTuple {
   }
 }
 
-impl StripLifetimes for Path {
-  fn make_lifetimes_static<'a>(&'a self) -> Cow<'a, Self> {
-    fn clone_and_continue(value: &Path, idx: usize, segment: PathSegment) -> Cow<'static, Path> {
-      let mut ret = value.clone();
-      ret.segments[idx] = segment;
-      for segment in ret.segments.iter_mut().skip(idx) {
-        match segment.make_lifetimes_static() {
-          Cow::Borrowed(_) => {}
-          Cow::Owned(stripped) => {
-            *segment = stripped;
-          }
-        }
-      }
-
-      Cow::Owned(ret)
-    }
-
+impl ModifyLifetimes for Path {
+  fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self> {
     let iter = self.segments.iter().enumerate();
     for (idx, segment) in iter {
-      if let Cow::Owned(segment) = segment.make_lifetimes_static() {
-        return clone_and_continue(self, idx, segment);
+      if let Cow::Owned(segment) = segment.map_lifetimes(f) {
+        let mut ret = self.clone();
+        ret.segments[idx] = segment;
+        {
+          for segment in ret.segments.iter_mut().skip(idx) {
+            match segment.map_lifetimes(f) {
+              Cow::Borrowed(_) => {}
+              Cow::Owned(stripped) => {
+                *segment = stripped;
+              }
+            }
+          }
+        }
+
+        return Cow::Owned(ret);
       }
     }
 
@@ -175,24 +169,24 @@ impl StripLifetimes for Path {
   }
 }
 
-impl StripLifetimes for PathSegment {
-  fn make_lifetimes_static<'a>(&'a self) -> Cow<'a, Self> {
+impl ModifyLifetimes for PathSegment {
+  fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self> {
     match &self.arguments {
       PathArguments::AngleBracketed(arguments) => {
         let mut args = Vec::with_capacity(arguments.args.len());
         args.extend(arguments.args.iter().map(|a| match a {
-          GenericArgument::Lifetime(_) => Cow::Owned(GenericArgument::Lifetime(static_lifetime())),
-          GenericArgument::Type(v) => match v.make_lifetimes_static() {
+          GenericArgument::Lifetime(l) => Cow::Owned(GenericArgument::Lifetime(f(l))),
+          GenericArgument::Type(v) => match v.map_lifetimes(f) {
             Cow::Borrowed(_) => Cow::Borrowed(a),
             Cow::Owned(ty) => Cow::Owned(GenericArgument::Type(ty)),
           },
-          GenericArgument::Binding(v) => match v.ty.make_lifetimes_static() {
+          GenericArgument::Binding(v) => match v.ty.map_lifetimes(f) {
             Cow::Borrowed(_) => Cow::Borrowed(a),
             Cow::Owned(ty) => {
               Cow::Owned(GenericArgument::Binding(syn::Binding { ty, ..v.clone() }))
             }
           },
-          GenericArgument::Constraint(v) => match v.make_lifetimes_static() {
+          GenericArgument::Constraint(v) => match v.map_lifetimes(f) {
             Cow::Borrowed(_) => Cow::Borrowed(a),
             Cow::Owned(ty) => Cow::Owned(GenericArgument::Constraint(ty)),
           },
@@ -217,8 +211,8 @@ impl StripLifetimes for PathSegment {
   }
 }
 
-impl StripLifetimes for Constraint {
-  fn make_lifetimes_static<'a>(&'a self) -> Cow<'a, Self> {
+impl ModifyLifetimes for Constraint {
+  fn map_lifetimes<'a>(&'a self, _f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self> {
     let mut constraints = Vec::with_capacity(self.bounds.len());
     constraints.extend(self.bounds.iter().filter_map(|b| match b {
       TypeParamBound::Lifetime(_) => None,
