@@ -41,7 +41,7 @@ impl<'a> ToTokens for BuilderStruct<'a> {
         let field = quote! {
           #(#docs)*
           #(#serde_attrs)*
-          #ident: #ty
+          pub #ident: #ty
         };
         let field_init = quote! {
           #ident: #init

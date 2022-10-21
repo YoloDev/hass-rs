@@ -1,5 +1,4 @@
 use crate::{
-  availability::Availability,
   device_class::DeviceClass,
   entity::{Entity, EntityInvalidity},
   exts::ValidateContextExt,
