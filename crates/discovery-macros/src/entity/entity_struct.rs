@@ -1,5 +1,3 @@
-use crate::util::ModifyLifetimes;
-
 use super::EntityStruct;
 use darling::ToTokens;
 use proc_macro2::TokenStream;

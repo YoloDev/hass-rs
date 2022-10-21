@@ -1,8 +1,8 @@
 use proc_macro2::Span;
 use std::borrow::Cow;
 use syn::{
-  Constraint, GenericArgument, Lifetime, Path, PathArguments, PathSegment, QSelf, TraitBound, Type,
-  TypeArray, TypeGroup, TypeParamBound, TypeParen, TypePath, TypeReference, TypeSlice, TypeTuple,
+  Constraint, GenericArgument, Lifetime, Path, PathArguments, PathSegment, QSelf, Type, TypeArray,
+  TypeGroup, TypeParamBound, TypeParen, TypePath, TypeReference, TypeSlice, TypeTuple,
 };
 
 pub(crate) trait ModifyLifetimes: Clone {

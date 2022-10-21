@@ -133,7 +133,7 @@ impl TryFrom<input::EntityFieldInput> for EntityField {
   type Error = darling::Error;
 
   fn try_from(value: input::EntityFieldInput) -> Result<Self> {
-    let mut accumulator = Accumulator::default();
+    let accumulator = Accumulator::default();
     let ident = match value.ident {
       Some(ident) => ident,
       None => syn::Ident::new("unknown", proc_macro2::Span::call_site()),
