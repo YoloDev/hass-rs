@@ -180,27 +180,3 @@ pub fn create(input: TokenStream) -> Result<TokenStream> {
   let entity = input::from_derive_input(&parsed)?;
   EntityStruct::try_from(entity).map(ToTokens::into_token_stream)
 }
-
-#[cfg(test)]
-mod tests {
-  use super::*;
-  use quote::quote;
-
-  fn parse(input: TokenStream) -> Result<EntityStruct> {
-    let parsed: syn::DeriveInput = parse2(input)?;
-    let parsed = input::from_derive_input(&parsed)?;
-    EntityStruct::try_from(parsed)
-  }
-
-  #[test]
-  fn test_name() -> Result<()> {
-    let value = parse(quote! {
-      struct Foo<'a> {
-        #[serde(borrow)]
-        bar: Cow<'a, str>,
-      }
-    })?;
-
-    panic!("{}", value.to_token_stream());
-  }
-}
