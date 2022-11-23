@@ -1,19 +1,11 @@
-use crate::{
-  exts::ValidateContextExt,
-  entity::{Entity, EntityInvalidity},
-  device_class::DeviceClass, payload::Payload, template::Template, topic::Topic,
-};
-use semval::{context::Context, Validate, ValidationResult};
-use serde::{Deserialize, Serialize};
+use crate::{device_class::DeviceClass, payload::Payload, template::Template, topic::Topic};
+use hass_mqtt_discovery_macros::entity_document;
 
 /// The mqtt switch platform lets you control your MQTT enabled switches.
 ///
 /// See: <https://www.home-assistant.io/integrations/switch.mqtt/>
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[entity_document]
 pub struct Switch<'a> {
-  #[serde(borrow, flatten)]
-  pub entity: Entity<'a>,
-
   /// The MQTT topic to publish commands to change the switch state.
   #[serde(borrow)]
   pub command_topic: Topic<'a>,
@@ -75,21 +67,4 @@ pub struct Switch<'a> {
   /// [template]: https://www.home-assistant.io/docs/configuration/templating/#processing-incoming-data
   #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
   pub value_template: Option<Template<'a>>,
-}
-
-impl<'a> Validate for Switch<'a> {
-  type Invalidity = EntityInvalidity;
-
-  fn validate(&self) -> ValidationResult<Self::Invalidity> {
-    Context::new()
-      .validate_with(&self.entity, |v| v)
-      .validate_with(&self.command_topic, EntityInvalidity::Topic)
-      .validate_with_opt(&self.payload_on, EntityInvalidity::Payload)
-      .validate_with_opt(&self.payload_off, EntityInvalidity::Payload)
-      .validate_with_opt(&self.state_topic, EntityInvalidity::Topic)
-      .validate_with_opt(&self.state_on, EntityInvalidity::Payload)
-      .validate_with_opt(&self.state_off, EntityInvalidity::Payload)
-      .validate_with_opt(&self.value_template, EntityInvalidity::Template)
-      .into()
-  }
 }

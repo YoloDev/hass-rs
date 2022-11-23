@@ -1,10 +1,5 @@
-use crate::{
-  exts::ValidateContextExt,
-  entity::{Entity, EntityInvalidity},
-  device_class::DeviceClass, payload::Payload, template::Template, topic::Topic,
-};
-use semval::{context::Context, Validate, ValidationResult};
-use serde::{Deserialize, Serialize};
+use crate::{device_class::DeviceClass, payload::Payload, template::Template, topic::Topic};
+use hass_mqtt_discovery_macros::entity_document;
 use std::num::NonZeroU32;
 
 /// The mqtt binary sensor platform uses an MQTT message received to set the binary sensor’s
@@ -22,11 +17,8 @@ use std::num::NonZeroU32;
 /// See: <https://www.home-assistant.io/integrations/binary_sensor.mqtt/>
 ///
 /// [device_trigger]: https://www.home-assistant.io/integrations/device_trigger.mqtt/
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[entity_document]
 pub struct BinarySensor<'a> {
-  #[serde(borrow, flatten)]
-  pub entity: Entity<'a>,
-
   /// The [type/class][device_class] of the sensor to set
   /// the icon in the frontend.
   ///
@@ -76,18 +68,4 @@ pub struct BinarySensor<'a> {
   /// [template]: https://www.home-assistant.io/docs/configuration/templating/#processing-incoming-data
   #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
   pub value_template: Option<Template<'a>>,
-}
-
-impl<'a> Validate for BinarySensor<'a> {
-  type Invalidity = EntityInvalidity;
-
-  fn validate(&self) -> ValidationResult<Self::Invalidity> {
-    Context::new()
-      .validate_with(&self.entity, |v| v)
-      .validate_with_opt(&self.payload_on, EntityInvalidity::Payload)
-      .validate_with_opt(&self.payload_off, EntityInvalidity::Payload)
-      .validate_with(&self.state_topic, EntityInvalidity::Topic)
-      .validate_with_opt(&self.value_template, EntityInvalidity::Template)
-      .into()
-  }
 }

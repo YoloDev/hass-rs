@@ -158,7 +158,7 @@ impl<'a> ToTokens for DocumentStruct<'a> {
         #(#builders)*
       }
 
-      impl #generics ::hass_mqtt_discovery::Document for #ident #generics {
+      impl #generics crate::Document for #ident #generics {
         fn serialize_validated<S>(validated: ::semval::Validated::<& #ident #generics>, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
         where
           S: ::serde::Serializer,
@@ -186,7 +186,7 @@ impl<'a> ToTokens for DocumentStruct<'a> {
         where
           S: ::serde::Serializer,
         {
-          ::hass_mqtt_discovery::Document::serialize(self, serializer)
+          crate::Document::serialize(self, serializer)
         }
       }
     });

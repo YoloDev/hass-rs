@@ -19,17 +19,11 @@ impl<'a> ToTokens for InvalidityEnum<'a> {
         }
       })
     });
-    let incomplete = self.0.fields.iter().any(|f| f.required).then(|| {
-      quote! {
-        Incomplete
-      }
-    });
 
     tokens.extend(quote! {
-      #[derive(Debug)]
+      #[derive(Copy, Clone, Debug, Eq, PartialEq)]
       #vis enum #ident {
         #(#variants,)*
-        #incomplete,
       }
     })
   }

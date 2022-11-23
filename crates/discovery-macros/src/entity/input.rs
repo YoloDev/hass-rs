@@ -6,21 +6,21 @@ use syn::FieldsNamed;
 fn common_fields() -> Vec<EntityFieldInput> {
   let tokens = quote! {{
     /// A list of MQTT topics subscribed to receive availability (online/offline) updates.
-    #[serde(borrow, default, skip_serializing_if = "<[::hass_mqtt_discovery::availability::Availability]>::is_empty")]
+    #[serde(borrow, default, skip_serializing_if = "<[crate::availability::Availability]>::is_empty")]
     #[entity(validate)]
-    availability: Cow<'a, [::hass_mqtt_discovery::availability::Availability<'a>]>,
+    availability: ::std::borrow::Cow<'a, [crate::availability::Availability<'a>]>,
 
     /// When `availability` is configured, this controls the conditions needed
     /// to set the entity to `available`.
-    #[serde(default, skip_serializing_if = "::hass_mqtt_discovery::availability::AvailabilityMode::is_default")]
-    availability_mode: ::hass_mqtt_discovery::availability::AvailabilityMode,
+    #[serde(default, skip_serializing_if = "crate::availability::AvailabilityMode::is_default")]
+    availability_mode: crate::availability::AvailabilityMode,
 
     /// Information about the device this entity is a part of to tie it into the device registry.
     /// Only works through MQTT discovery and when `unique_id` is set.
     /// At least one of identifiers or connections must be present to identify the device.
     #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
     #[entity(validate)]
-    device: Option<::hass_mqtt_discovery::device::Device<'a>>,
+    device: Option<crate::device::Device<'a>>,
 
     /// Flag which defines if the entity should be enabled when first added.
     /// Defaults to `true`.
@@ -30,20 +30,20 @@ fn common_fields() -> Vec<EntityFieldInput> {
     /// The encoding of the payloads received and published messages. Set to "" to disable decoding of incoming payload.
     /// Defaults to `"utf-8"`.
     #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-    encoding: Option<Cow<'a, str>>,
+    encoding: Option<::std::borrow::Cow<'a, str>>,
 
     /// The [category] of the entity.
     ///
     /// [category]: https://developers.home-assistant.io/docs/core/entity#generic-properties
-    #[serde(default, skip_serializing_if = "::hass_mqtt_discovery::entity_category::EntityCategory::is_none")]
-    entity_category: ::hass_mqtt_discovery::entity_category::EntityCategory,
+    #[serde(default, skip_serializing_if = "crate::entity_category::EntityCategory::is_none")]
+    entity_category: crate::entity_category::EntityCategory,
 
     /// [Icon][icon] for the entity.
     ///
     /// [icon]: https://www.home-assistant.io/docs/configuration/customizing-devices/#icon
     #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
     #[entity(validate)]
-    icon: Option<::hass_mqtt_discovery::icon::Icon<'a>>,
+    icon: Option<crate::icon::Icon<'a>>,
 
     /// Defines a [template][template] to extract the JSON dictionary from messages received
     /// on the `json_attributes_topic`.
@@ -51,7 +51,7 @@ fn common_fields() -> Vec<EntityFieldInput> {
     /// [template]: https://www.home-assistant.io/docs/configuration/templating/#processing-incoming-data
     #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
     #[entity(validate)]
-    json_attributes_template: Option<::hass_mqtt_discovery::template::Template<'a>>,
+    json_attributes_template: Option<crate::template::Template<'a>>,
 
     /// The MQTT topic subscribed to receive a JSON dictionary payload and then set as entity
     /// attributes.
@@ -59,26 +59,26 @@ fn common_fields() -> Vec<EntityFieldInput> {
     /// Implies `force_update` of the current state when a message is received on this topic.
     #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
     #[entity(validate)]
-    json_attributes_topic: Option<::hass_mqtt_discovery::topic::Topic<'a>>,
+    json_attributes_topic: Option<crate::topic::Topic<'a>>,
 
     /// The name of the MQTT entity.
     #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
     #[entity(validate)]
-    name: Option<::hass_mqtt_discovery::name::Name<'a>>,
+    name: Option<crate::name::Name<'a>>,
 
     /// Used instead of `name` for automatic generation of `entity_id`.
     #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-    object_id: Option<Cow<'a, str>>,
+    object_id: Option<::std::borrow::Cow<'a, str>>,
 
     /// The maximum QoS level of the state topic.
-    #[serde(default, skip_serializing_if = "::hass_mqtt_discovery::qos::MqttQoS::is_default")]
-    qos: ::hass_mqtt_discovery::qos::MqttQoS,
+    #[serde(default, skip_serializing_if = "crate::qos::MqttQoS::is_default")]
+    qos: crate::qos::MqttQoS,
 
     /// An ID that uniquely identifies this entity. If two entities have the same unique ID,
     /// Home Assistant will raise an exception.
     #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
     #[entity(validate)]
-    unique_id: Option<::hass_mqtt_discovery::unique_id::UniqueId<'a>>,
+    unique_id: Option<crate::unique_id::UniqueId<'a>>,
   }};
 
   let fields: FieldsNamed = syn::parse2(tokens).unwrap();
