@@ -4,8 +4,8 @@ mod device_tracker;
 mod sensor;
 mod switch;
 
-pub use binary_sensor::BinarySensor;
-pub use button::Button;
-pub use device_tracker::DeviceTracker;
-pub use sensor::Sensor;
-pub use switch::Switch;
+pub use binary_sensor::{BinarySensor, BinarySensorInvalidity};
+pub use button::{Button, ButtonInvalidity};
+pub use device_tracker::{DeviceTracker, DeviceTrackerInvalidity};
+pub use sensor::{Sensor, SensorInvalidity};
+pub use switch::{Switch, SwitchInvalidity};
