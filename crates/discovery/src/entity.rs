@@ -1,13 +1,14 @@
 use crate::{
-  exts::ValidateContextExt,
-  availability::{Availability, AvailabilityMode, AvailabilityDataInvalidity},
+  availability::{Availability, AvailabilityDataInvalidity, AvailabilityMode},
   device::{Device, DeviceInvalidity},
+  entity_category::EntityCategory,
+  exts::ValidateContextExt,
   icon::{Icon, IconInvalidity},
   name::{Name, NameInvalidity},
   payload::PayloadInvalidity,
+  qos::MqttQoS,
   template::{Template, TemplateInvalidity},
   topic::{Topic, TopicInvalidity},
-  entity_category::EntityCategory, qos::MqttQoS,
   unique_id::{UniqueId, UniqueIdInvalidity},
 };
 use semval::{context::Context, Validate, ValidationResult};

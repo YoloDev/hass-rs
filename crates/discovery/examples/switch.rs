@@ -90,5 +90,10 @@ pub struct Switch<'a> {
 // }
 
 fn main() {
-  let switch: Switch = todo!();
+  let switch = Switch::new("switch/foo")
+    .optimistic(true)
+    .state_on("ON")
+    .state_off("OFF")
+    .state_topic("switch/foo/state");
+  println!("{}", serde_json::to_string_pretty(&switch).unwrap());
 }

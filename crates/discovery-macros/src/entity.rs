@@ -1,7 +1,7 @@
-mod builder;
 mod entity_struct;
 mod input;
 mod invalidity;
+mod validate;
 
 use convert_case::{Case, Casing};
 use darling::{error::Accumulator, usage::GenericsExt, Error, Result};
@@ -11,7 +11,6 @@ use syn::parse2;
 
 struct EntityStruct {
   ident: syn::Ident,
-  builder_ident: syn::Ident,
   invalidity_ident: syn::Ident,
   vis: syn::Visibility,
   generics: syn::Generics,
@@ -29,8 +28,8 @@ impl EntityStruct {
     invalidity::invalidity_enum(self)
   }
 
-  fn builder(&self) -> impl ToTokens + '_ {
-    builder::builder_struct(self)
+  fn validate(&self) -> impl ToTokens + '_ {
+    validate::validation(self)
   }
 }
 
@@ -95,12 +94,10 @@ impl TryFrom<input::EntityStructInput> for EntityStruct {
       .into_iter()
       .partition(|attr| attr.path.is_ident("doc"));
 
-    let builder_ident = format_ident!("{}Builder", &value.ident);
     let invalidity_ident = format_ident!("{}Invalidity", &value.ident);
 
     accumulator.finish_with(Self {
       ident: value.ident,
-      builder_ident,
       invalidity_ident,
       vis: value.vis,
       generics: value.generics,
@@ -114,8 +111,8 @@ impl TryFrom<input::EntityStructInput> for EntityStruct {
 impl ToTokens for EntityStruct {
   fn to_tokens(&self, tokens: &mut TokenStream) {
     self.entity_struct().to_tokens(tokens);
-    self.builder().to_tokens(tokens);
     self.invalidity_enum().to_tokens(tokens);
+    self.validate().to_tokens(tokens);
   }
 }
 

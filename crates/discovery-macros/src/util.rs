@@ -9,10 +9,13 @@ pub(crate) trait ModifyLifetimes: Clone {
   fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self>;
 
   fn make_lifetimes_static(&self) -> Cow<Self> {
-    self.map_lifetimes(&mut |_| Lifetime::new("'static", Span::call_site()))
+    self.make_lifetimes(&Lifetime::new("'static", Span::call_site()))
   }
   fn make_lifetimes_inferred(&self) -> Cow<Self> {
-    self.map_lifetimes(&mut |_| Lifetime::new("'_", Span::call_site()))
+    self.make_lifetimes(&Lifetime::new("'_", Span::call_site()))
+  }
+  fn make_lifetimes(&self, lifetime: &Lifetime) -> Cow<Self> {
+    self.map_lifetimes(&mut |_| lifetime.clone())
   }
 }
 
