@@ -107,19 +107,19 @@ pub enum ColorMode {
   ColorTemp,
 
   #[serde(rename = "hs")]
-  HS,
+  Hs,
 
   #[serde(rename = "xy")]
-  XY,
+  Xy,
 
   #[serde(rename = "rgb")]
-  RGB,
+  Rgb,
 
   #[serde(rename = "rgbw")]
-  RGBW,
+  Rgbw,
 
   #[serde(rename = "rgbww")]
-  RGBWW,
+  Rgbww,
 
   #[serde(rename = "white")]
   White,
