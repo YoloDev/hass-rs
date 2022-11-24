@@ -28,7 +28,7 @@ impl<'a> ToTokens for ValidationImpl<'a> {
 
         fn validate(&self) -> ::semval::ValidationResult<Self::Invalidity> {
           #[allow(unused)]
-          use crate::validation::CustomValidationExt;
+          use crate::validation::ValidateContextExt;
 
           ::semval::context::Context::new()
             #(#fields_validation)*

@@ -1,8 +1,8 @@
 use crate::{
-  exts::ValidateContextExt,
   payload::{Payload, PayloadInvalidity},
   template::{Template, TemplateInvalidity},
   topic::{Topic, TopicInvalidity},
+  validation::ValidateContextExt,
 };
 use semval::{context::Context, Validate, ValidationResult};
 use serde::{Deserialize, Serialize};

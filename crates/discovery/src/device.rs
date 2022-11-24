@@ -1,8 +1,8 @@
 mod serde;
 
 use crate::{
-  exts::ValidateContextExt,
   name::{Name, NameInvalidity},
+  validation::ValidateContextExt,
 };
 use ::serde::{Deserialize, Serialize};
 use semval::{context::Context, Validate, ValidationResult};

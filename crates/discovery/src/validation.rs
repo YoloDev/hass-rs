@@ -1,5 +1,5 @@
 use error_stack::Context;
-use semval::Invalidity;
+use semval::{Invalidity, Validate};
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -13,12 +13,6 @@ impl<I: Invalidity + Send + Sync> fmt::Display for ValidationError<I> {
 
 impl<I: Invalidity + Send + Sync> Context for ValidationError<I> {}
 
-impl<I: Invalidity + Send + Sync> ValidationError<I> {
-  pub fn new(invalidity: I) -> Self {
-    Self(invalidity)
-  }
-}
-
 pub(crate) trait CustomValidation {
   type Invalidity: Invalidity;
 
@@ -28,8 +22,22 @@ pub(crate) trait CustomValidation {
   ) -> semval::context::Context<Self::Invalidity>;
 }
 
-pub(crate) trait CustomValidationExt {
+pub(crate) trait ValidateContextExt {
   type Invalidity: Invalidity;
+
+  /// Validate the target and merge the mapped result into this context if the target is not `None`.
+  fn validate_with_opt<F, U>(self, target: &Option<impl Validate<Invalidity = U>>, map: F) -> Self
+  where
+    F: Fn(U) -> Self::Invalidity,
+    U: Invalidity;
+
+  /// Validate all items in an iterator.
+  fn validate_iter<'a, F, U, I, II: 'a>(self, target: I, map: F) -> Self
+  where
+    F: Fn(usize, U) -> Self::Invalidity,
+    U: Invalidity,
+    I: IntoIterator<Item = &'a II>,
+    II: Validate<Invalidity = U>;
 
   fn validate_entity(
     self,
@@ -37,8 +45,36 @@ pub(crate) trait CustomValidationExt {
   ) -> Self;
 }
 
-impl<I: Invalidity> CustomValidationExt for semval::context::Context<I> {
-  type Invalidity = I;
+impl<V: Invalidity> ValidateContextExt for semval::context::Context<V> {
+  type Invalidity = V;
+
+  #[inline]
+  fn validate_with_opt<F, U>(self, target: &Option<impl Validate<Invalidity = U>>, map: F) -> Self
+  where
+    F: Fn(U) -> Self::Invalidity,
+    U: Invalidity,
+  {
+    match target {
+      Some(v) => self.validate_with(v, map),
+      None => self,
+    }
+  }
+
+  fn validate_iter<'a, F, U, I, II: 'a>(self, target: I, map: F) -> Self
+  where
+    F: Fn(usize, U) -> Self::Invalidity,
+    U: Invalidity,
+    I: IntoIterator<Item = &'a II>,
+    II: Validate<Invalidity = U>,
+  {
+    let mut ret = self;
+
+    for (index, item) in target.into_iter().enumerate() {
+      ret = ret.validate_with(item, |v| map(index, v));
+    }
+
+    ret
+  }
 
   #[inline]
   fn validate_entity(

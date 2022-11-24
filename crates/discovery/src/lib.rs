@@ -1,7 +1,6 @@
-mod document;
-
-pub(crate) mod exts;
+pub(crate) mod document;
 pub(crate) mod string_wrappers;
+pub(crate) mod validation;
 
 pub mod availability;
 pub mod device;
@@ -17,7 +16,6 @@ pub mod state_class;
 pub mod template;
 pub mod topic;
 pub mod unique_id;
-pub mod validation;
 
 #[doc(no_inline)]
 pub use availability::Availability;
