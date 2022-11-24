@@ -19,11 +19,19 @@ impl<'a> ToTokens for InvalidityEnum<'a> {
         }
       })
     });
+    let extra_variants = match self.0.additional_invalidities.as_ref() {
+      None => quote! {},
+      Some(invalidities) => {
+        let variants = invalidities.variants();
+        quote! {#(#variants,)*}
+      }
+    };
 
     tokens.extend(quote! {
       #[derive(Copy, Clone, Debug, Eq, PartialEq)]
       #vis enum #ident {
         #(#variants,)*
+        #extra_variants
       }
     })
   }

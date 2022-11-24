@@ -1,6 +1,7 @@
 mod binary_sensor;
 mod button;
 mod device_tracker;
+mod light;
 mod sensor;
 mod switch;
 

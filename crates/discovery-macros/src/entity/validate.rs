@@ -1,7 +1,7 @@
 use super::EntityStruct;
 use darling::ToTokens;
-use proc_macro2::TokenStream;
-use quote::quote;
+use proc_macro2::{Span, TokenStream};
+use quote::{format_ident, quote};
 
 struct ValidationImpl<'a>(&'a EntityStruct);
 
@@ -12,18 +12,27 @@ impl<'a> ToTokens for ValidationImpl<'a> {
     let invalidity_ident = &self.0.invalidity_ident;
 
     let fields_validation = self.0.fields.iter().filter(|f| f.validate).map(|f| {
-      let ident = &f.ident;
+      let ident = format_ident!("{}", &f.ident, span = Span::call_site());
       let variant_ident = &f.variant_ident;
       quote! { .validate_with(&self.#ident, #invalidity_ident::#variant_ident) }
     });
+
+    let extra_validation = match self.0.additional_invalidities.as_ref() {
+      None => quote! {},
+      Some(_) => quote! { .validate_entity(self) },
+    };
 
     tokens.extend(quote! {
       impl #generics ::semval::Validate for #ident #generics {
         type Invalidity = #invalidity_ident;
 
         fn validate(&self) -> ::semval::ValidationResult<Self::Invalidity> {
+          #[allow(unused)]
+          use crate::validation::CustomValidationExt;
+
           ::semval::context::Context::new()
             #(#fields_validation)*
+            #extra_validation
             .into_result()
         }
       }

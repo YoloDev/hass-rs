@@ -18,3 +18,33 @@ impl<I: Invalidity + Send + Sync> ValidationError<I> {
     Self(invalidity)
   }
 }
+
+pub(crate) trait CustomValidation {
+  type Invalidity: Invalidity;
+
+  fn additional_validation(
+    &self,
+    context: semval::context::Context<Self::Invalidity>,
+  ) -> semval::context::Context<Self::Invalidity>;
+}
+
+pub(crate) trait CustomValidationExt {
+  type Invalidity: Invalidity;
+
+  fn validate_entity(
+    self,
+    custom_validatable: &impl CustomValidation<Invalidity = Self::Invalidity>,
+  ) -> Self;
+}
+
+impl<I: Invalidity> CustomValidationExt for semval::context::Context<I> {
+  type Invalidity = I;
+
+  #[inline]
+  fn validate_entity(
+    self,
+    custom_validatable: &impl CustomValidation<Invalidity = Self::Invalidity>,
+  ) -> Self {
+    custom_validatable.additional_validation(self)
+  }
+}

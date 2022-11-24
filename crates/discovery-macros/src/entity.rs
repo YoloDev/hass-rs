@@ -5,9 +5,11 @@ mod validate;
 
 use convert_case::{Case, Casing};
 use darling::{error::Accumulator, usage::GenericsExt, Error, Result};
-use proc_macro2::TokenStream;
+use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, ToTokens};
 use syn::parse2;
+
+use self::input::{AdditionalInvalidities, AdditionalProps};
 
 struct EntityStruct {
   ident: syn::Ident,
@@ -17,6 +19,8 @@ struct EntityStruct {
   docs: Vec<syn::Attribute>,
   attrs: Vec<syn::Attribute>,
   fields: Vec<EntityField>,
+  additional_invalidities: Option<AdditionalInvalidities>,
+  additional_props: Option<AdditionalProps>,
 }
 
 impl EntityStruct {
@@ -94,7 +98,7 @@ impl TryFrom<input::EntityStructInput> for EntityStruct {
       .into_iter()
       .partition(|attr| attr.path.is_ident("doc"));
 
-    let invalidity_ident = format_ident!("{}Invalidity", &value.ident);
+    let invalidity_ident = format_ident!("{}Invalidity", &value.ident, span = Span::call_site());
 
     accumulator.finish_with(Self {
       ident: value.ident,
@@ -104,6 +108,8 @@ impl TryFrom<input::EntityStructInput> for EntityStruct {
       fields,
       docs,
       attrs,
+      additional_invalidities: value.validate,
+      additional_props: value.extend_json,
     })
   }
 }
@@ -130,11 +136,18 @@ impl TryFrom<input::EntityFieldInput> for EntityField {
   type Error = darling::Error;
 
   fn try_from(value: input::EntityFieldInput) -> Result<Self> {
-    let accumulator = Accumulator::default();
+    let mut accumulator = Accumulator::default();
     let ident = match value.ident {
       Some(ident) => ident,
-      None => syn::Ident::new("unknown", proc_macro2::Span::call_site()),
+      None => {
+        accumulator.push(Error::custom("Entity fields must be named"));
+        syn::Ident::new("unknown", proc_macro2::Span::call_site())
+      }
     };
+
+    if !matches!(value.vis, syn::Visibility::Public(_)) {
+      accumulator.push(Error::custom("Entity fields must be public").with_span(&ident));
+    }
 
     let ty = value.ty;
     let (docs, attrs): (Vec<_>, Vec<_>) = value
@@ -153,7 +166,7 @@ impl TryFrom<input::EntityFieldInput> for EntityField {
         .to_string()
         .from_case(Case::Snake)
         .to_case(Case::Pascal),
-      span = ident.span()
+      span = Span::call_site(),
     );
 
     accumulator.finish_with(Self {

@@ -2,7 +2,8 @@ use crate::util::ModifyLifetimes;
 
 use super::EntityStruct;
 use darling::ToTokens;
-use proc_macro2::TokenStream;
+use itertools::MultiUnzip;
+use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 use syn::{Path, PathArguments, Type};
 
@@ -43,7 +44,7 @@ impl<'a> ToTokens for DocumentStruct<'a> {
     let vis = &self.0.vis;
     let generics = &self.0.generics;
     let ident = &self.0.ident;
-    let proxy_ident = format_ident!("{}Proxy", &self.0.ident);
+    let proxy_ident = format_ident!("{}Proxy", &self.0.ident, span = Span::call_site());
     let docs = &self.0.docs;
     let attrs = &self.0.attrs;
     let fields = self.0.fields.iter().map(|f| {
@@ -63,7 +64,7 @@ impl<'a> ToTokens for DocumentStruct<'a> {
       .fields
       .iter()
       .map(|f| {
-        let ident = &f.ident;
+        let ident = format_ident!("{}", &f.ident, span = Span::call_site());
         let ty = &f.ty;
         let required = &f.required;
         let (field, arg) = if *required {
@@ -88,7 +89,7 @@ impl<'a> ToTokens for DocumentStruct<'a> {
     let proxy_outer_lifetime = proxy_generics.lifetimes().last().unwrap();
 
     let proxy_fields = self.0.fields.iter().map(|f| {
-      let ident = &f.ident;
+      let ident = format_ident!("{}", &f.ident, span = Span::call_site());
       let attrs = &f.attrs;
       let ty = f.ty.make_lifetimes(&proxy_inner_lifetime.lifetime);
       quote! {
@@ -97,15 +98,48 @@ impl<'a> ToTokens for DocumentStruct<'a> {
       }
     });
 
+    let (ser_fns, additional_proxy_fields, additional_proxy_assigns) = match self
+      .0
+      .additional_props
+      .as_ref()
+    {
+      None => (quote! {}, quote! {}, quote! {}),
+      Some(v) => {
+        let (fns, flds, assigns): (Vec<_>, Vec<_>, Vec<_>) = v.props().enumerate().map(|(idx, (name, value))| {
+          let ident = format_ident!("__const_field_{}", idx);
+          let ser_ident = format_ident!("__serialize_field_{}", idx);
+          let ser_ident_str = ser_ident.to_string();
+          let ser_fn = quote! {
+            fn #ser_ident<S: ::serde::Serializer>(_: &(), s: S) -> ::std::result::Result<S::Ok, S::Error> {
+              s.serialize_str(#value)
+            }
+          };
+          let fld = quote! {
+            #[serde(skip_deserializing, serialize_with = #ser_ident_str, rename = #name)]
+            #ident: ()
+          };
+          let assign = quote!{ #ident: () };
+
+          (ser_fn, fld, assign)
+        }).multiunzip();
+
+        (
+          quote! { #(#fns)* },
+          quote! { #(#flds,)* },
+          quote! { #(#assigns,)* },
+        )
+      }
+    };
+
     let proxy_assign = self.0.fields.iter().map(|f| {
-      let ident = &f.ident;
+      let ident = format_ident!("{}", &f.ident, span = Span::call_site());
       quote! {
         #ident: &doc.#ident
       }
     });
 
     let builders = self.0.fields.iter().map(|f| {
-      let ident = &f.ident;
+      let ident = format_ident!("{}", &f.ident, span = Span::call_site());
       let docs = &f.docs;
       let ty = &f.ty;
       match ty {
@@ -163,14 +197,18 @@ impl<'a> ToTokens for DocumentStruct<'a> {
         where
           S: ::serde::Serializer,
         {
+          #ser_fns
+
           #[derive(::serde::Serialize)]
           struct #proxy_ident #proxy_generics {
             #(#proxy_fields,)*
+            #additional_proxy_fields
           }
 
           let doc = *validated;
           let proxy = #proxy_ident {
             #(#proxy_assign,)*
+            #additional_proxy_assigns
           };
 
           <#proxy_ident as ::serde::Serialize>::serialize(
