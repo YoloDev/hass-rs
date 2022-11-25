@@ -12,7 +12,7 @@ repository = "https://github.com/YoloDev/hass-rs"
 
 [dependencies]
 paste = "1"
-serde = { version = "1" }
+serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]
 assert_matches = "1"

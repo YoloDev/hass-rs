@@ -1,20 +1,15 @@
 use crate::{
-  exts::ValidateContextExt,
-  entity::{Entity, EntityInvalidity},
-  device_tracker_source_type::DeviceTrackerSourceType, payload::Payload, template::Template, topic::Topic,
+  device_tracker_source_type::DeviceTrackerSourceType, payload::Payload, template::Template,
+  topic::Topic,
 };
-use semval::{context::Context, Validate, ValidationResult};
-use serde::{Deserialize, Serialize};
+use hass_mqtt_discovery_macros::entity_document;
 
 /// The mqtt device tracker platform allows you to automatically discover device_trackers
 /// using the MQTT Discovery protocol.
 ///
 /// See: <https://www.home-assistant.io/integrations/device_tracker.mqtt/>
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[entity_document]
 pub struct DeviceTracker<'a> {
-  #[serde(borrow, flatten)]
-  pub entity: Entity<'a>,
-
   /// The payload value that represents the `home` state for the device.
   /// Defaults to `"home"`.
   #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
@@ -41,18 +36,4 @@ pub struct DeviceTracker<'a> {
   /// [template]: https://www.home-assistant.io/docs/configuration/templating/#processing-incoming-data
   #[serde(borrow, default, skip_serializing_if = "Option::is_none")]
   pub value_template: Option<Template<'a>>,
-}
-
-impl<'a> Validate for DeviceTracker<'a> {
-  type Invalidity = EntityInvalidity;
-
-  fn validate(&self) -> ValidationResult<Self::Invalidity> {
-    Context::new()
-      .validate_with(&self.entity, |v| v)
-      .validate_with_opt(&self.payload_home, EntityInvalidity::Payload)
-      .validate_with_opt(&self.payload_not_home, EntityInvalidity::Payload)
-      .validate_with(&self.state_topic, EntityInvalidity::Topic)
-      .validate_with_opt(&self.value_template, EntityInvalidity::Template)
-      .into()
-  }
 }

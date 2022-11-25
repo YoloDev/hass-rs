@@ -1,6 +1,28 @@
-use semval::{context::Context, Invalidity, Validate};
+use error_stack::Context;
+use semval::{Invalidity, Validate};
+use std::fmt;
 
-pub trait ValidateContextExt {
+#[derive(Debug, Clone)]
+pub struct ValidationError<I: Invalidity + Send + Sync>(I);
+
+impl<I: Invalidity + Send + Sync> fmt::Display for ValidationError<I> {
+  fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "validation error: {:?}", self.0)
+  }
+}
+
+impl<I: Invalidity + Send + Sync> Context for ValidationError<I> {}
+
+pub(crate) trait CustomValidation {
+  type Invalidity: Invalidity;
+
+  fn additional_validation(
+    &self,
+    context: semval::context::Context<Self::Invalidity>,
+  ) -> semval::context::Context<Self::Invalidity>;
+}
+
+pub(crate) trait ValidateContextExt {
   type Invalidity: Invalidity;
 
   /// Validate the target and merge the mapped result into this context if the target is not `None`.
@@ -16,18 +38,14 @@ pub trait ValidateContextExt {
     U: Invalidity,
     I: IntoIterator<Item = &'a II>,
     II: Validate<Invalidity = U>;
-  // /// Validate the target and merge the mapped result into this context
-  // #[inline]
-  // pub fn validate_with<F, U>(self, target: &impl Validate<Invalidity = U>, map: F) -> Self
-  // where
-  //     F: Fn(U) -> V,
-  //     U: Invalidity,
-  // {
-  //     self.merge_result_with(target.validate(), map)
-  // }
+
+  fn validate_entity(
+    self,
+    custom_validatable: &impl CustomValidation<Invalidity = Self::Invalidity>,
+  ) -> Self;
 }
 
-impl<V: Invalidity> ValidateContextExt for Context<V> {
+impl<V: Invalidity> ValidateContextExt for semval::context::Context<V> {
   type Invalidity = V;
 
   #[inline]
@@ -56,5 +74,13 @@ impl<V: Invalidity> ValidateContextExt for Context<V> {
     }
 
     ret
+  }
+
+  #[inline]
+  fn validate_entity(
+    self,
+    custom_validatable: &impl CustomValidation<Invalidity = Self::Invalidity>,
+  ) -> Self {
+    custom_validatable.additional_validation(self)
   }
 }

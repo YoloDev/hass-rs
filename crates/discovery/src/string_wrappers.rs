@@ -7,6 +7,13 @@ macro_rules! typed_str {
     #[derive(Clone, Eq, PartialEq, Hash, PartialOrd, Ord)]
     $vis struct $name<'a>(pub(crate) std::borrow::Cow<'a, str>);
 
+    impl<'a> From<std::borrow::Cow<'a, str>> for $name<'a> {
+      #[inline]
+      fn from(value: std::borrow::Cow<'a, str>) -> Self {
+        Self(value)
+      }
+    }
+
     impl<'a> From<&'a str> for $name<'a> {
       #[inline]
       fn from(value: &'a str) -> Self {

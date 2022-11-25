@@ -1,6 +1,7 @@
 [workspace]
 members = [
   "crates/discovery",
+  "crates/discovery-macros",
   "crates/entity-state",
   #"crates/mqtt",
 ]
