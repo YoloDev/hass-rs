@@ -1,15 +1,14 @@
-use std::{thread, time::Duration};
-
 use crate::{
+	entity::EntityTopic,
 	options::HassMqttConnection,
 	topics::{DiscoveryTopicConfig, PrivateTopicConfig},
 	HassMqttOptions,
 };
 use error_stack::{report, IntoReport, ResultExt};
 use paho_mqtt::AsyncClient as MqttClient;
+use std::{sync::Arc, thread, time::Duration};
 use thiserror::Error;
-
-enum Command {}
+use tokio::sync::oneshot;
 
 #[derive(Clone, Debug, Error)]
 pub enum ConnectError {
@@ -21,6 +20,48 @@ pub enum ConnectError {
 
 	#[error("failed to create async MQTT runtime")]
 	CreateRuntime,
+}
+
+#[derive(Clone, Debug, Error)]
+pub enum ClientError {
+	#[error("failed to create entity topic for {domain}.{entity_id}")]
+	Entity {
+		domain: Arc<str>,
+		entity_id: Arc<str>,
+	},
+}
+
+impl ClientError {
+	pub fn entity(domain: Arc<str>, entity_id: Arc<str>) -> Self {
+		ClientError::Entity { domain, entity_id }
+	}
+}
+
+enum Command {
+	Entity {
+		_domain: Arc<str>,
+		_entity_id: Arc<str>,
+		_return_channel: oneshot::Sender<EntityCommandResult>,
+	},
+}
+
+impl Command {
+	pub fn entity(
+		domain: Arc<str>,
+		entity_id: Arc<str>,
+	) -> (Self, oneshot::Receiver<EntityCommandResult>) {
+		let (return_channel, return_receiver) = oneshot::channel();
+		let cmd = Command::Entity {
+			_domain: domain,
+			_entity_id: entity_id,
+			_return_channel: return_channel,
+		};
+		(cmd, return_receiver)
+	}
+}
+
+struct EntityCommandResult {
+	topic: Arc<str>,
 }
 
 struct Client {
@@ -120,13 +161,36 @@ impl Client {
 
 #[derive(Clone)]
 pub struct HassMqttClient {
-	_sender: flume::Sender<Command>,
+	sender: flume::Sender<Command>,
 }
 
 impl HassMqttClient {
 	pub async fn new(options: HassMqttOptions) -> error_stack::Result<Self, ConnectError> {
 		let sender = Client::spawn(options).await?;
-		Ok(Self { _sender: sender })
+		Ok(Self { sender })
+	}
+
+	pub async fn entity(
+		&self,
+		domain: impl Into<Arc<str>>,
+		entity_id: impl Into<Arc<str>>,
+	) -> error_stack::Result<EntityTopic, ClientError> {
+		let entity_id = entity_id.into();
+		let domain = domain.into();
+
+		let (cmd, ret) = Command::entity(domain.clone(), entity_id.clone());
+
+		self
+			.sender
+			.send_async(cmd)
+			.await
+			.into_report()
+			.change_context_lazy(|| ClientError::entity(domain.clone(), entity_id.clone()))?;
+
+		match ret.await {
+			Ok(EntityCommandResult { topic }) => Ok(EntityTopic::new(self.clone(), topic)),
+			Err(e) => Err(report!(e).change_context(ClientError::entity(domain, entity_id))),
+		}
 	}
 }
 

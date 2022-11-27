@@ -1,5 +1,6 @@
 mod availability;
 mod client;
+mod entity;
 mod options;
 mod topics;
 mod tracking;
