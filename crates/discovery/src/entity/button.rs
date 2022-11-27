@@ -21,8 +21,8 @@ pub struct Button<'a> {
   /// The [type/class][device_class] of the button to set the icon in the frontend.
   ///
   /// [device_class]: https://www.home-assistant.io/integrations/button/#device-class
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub device_class: Option<DeviceClass>,
+  #[serde(default, skip_serializing_if = "DeviceClass::is_none")]
+  pub device_class: DeviceClass,
 
   /// The payload to send to trigger the button.
   /// Defaults to `"PRESS"`.

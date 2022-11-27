@@ -23,8 +23,8 @@ pub struct Cover<'a> {
   /// Sets the [class of the device][device_class], changing the device state and icon that is displayed on the frontend.
   ///
   /// [device_class]: https://www.home-assistant.io/integrations/cover/#device-class
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub device_class: Option<DeviceClass>,
+  #[serde(default, skip_serializing_if = "DeviceClass::is_none")]
+  pub device_class: DeviceClass,
 
   /// Flag that defines if the cover works in optimistic mode.
   /// Defaults to `false` if a `state_topic` or `position_topic` is defined, else `true`.

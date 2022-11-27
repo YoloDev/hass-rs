@@ -13,8 +13,8 @@ pub struct Switch<'a> {
   /// The [type/class][device_class] of the switch to set the icon in the frontend.
   ///
   /// [device_class]: https://www.home-assistant.io/integrations/switch/#device-class
-  #[serde(default, skip_serializing_if = "Option::is_none")]
-  pub device_class: Option<DeviceClass>,
+  #[serde(default, skip_serializing_if = "DeviceClass::is_none")]
+  pub device_class: DeviceClass,
 
   /// Flag that defines if switch works in optimistic mode.
   /// Defaults to `true` if no `state_topic` defined, else `false`.
