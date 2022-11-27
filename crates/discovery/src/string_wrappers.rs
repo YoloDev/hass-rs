@@ -121,63 +121,63 @@ macro_rules! typed_str {
 }
 
 typed_str!(
-  /// MQTT Topic name.
-  pub Topic
+	/// MQTT Topic name.
+	pub Topic
 );
 
 typed_str!(
-  /// Message payload.
-  pub Payload
+	/// Message payload.
+	pub Payload
 );
 
 typed_str!(
-  /// [Home-Assistant device icon][icon].
-  ///
-  /// [icon]: https://www.home-assistant.io/docs/configuration/customizing-devices/#icon
-  pub Icon
+	/// [Home-Assistant device icon][icon].
+	///
+	/// [icon]: https://www.home-assistant.io/docs/configuration/customizing-devices/#icon
+	pub Icon
 );
 
 typed_str!(
-  /// [Home-Assistant template][template].
-  ///
-  /// [template]: https://www.home-assistant.io/docs/configuration/templating/
-  pub Template
+	/// [Home-Assistant template][template].
+	///
+	/// [template]: https://www.home-assistant.io/docs/configuration/templating/
+	pub Template
 );
 
 typed_str!(
-  /// A device/entity name.
-  pub Name
+	/// A device/entity name.
+	pub Name
 );
 
 typed_str!(
-  /// An ID that uniquely identifies this sensor. If two sensors have the same unique ID,
-  /// Home Assistant will raise an exception..
-  pub UniqueId
+	/// An ID that uniquely identifies this sensor. If two sensors have the same unique ID,
+	/// Home Assistant will raise an exception..
+	pub UniqueId
 );
 
 #[cfg(test)]
 mod tests {
-  use super::*;
-  use assert_matches::assert_matches;
-  use serde_test::{assert_tokens, Token};
-  use std::borrow::Cow;
+	use super::*;
+	use assert_matches::assert_matches;
+	use serde_test::{assert_tokens, Token};
+	use std::borrow::Cow;
 
-  #[test]
-  fn topic_ser_de() {
-    assert_tokens(&Topic(Cow::Borrowed("test")), &[Token::Str("test")])
-  }
+	#[test]
+	fn topic_ser_de() {
+		assert_tokens(&Topic(Cow::Borrowed("test")), &[Token::Str("test")])
+	}
 
-  #[test]
-  fn topic_ser_de_borrowed() {
-    let json = r#""test""#;
-    let topic: Topic = serde_json::from_str(json).expect("should parse");
-    assert_matches!(topic.0, Cow::Borrowed(_));
-  }
+	#[test]
+	fn topic_ser_de_borrowed() {
+		let json = r#""test""#;
+		let topic: Topic = serde_json::from_str(json).expect("should parse");
+		assert_matches!(topic.0, Cow::Borrowed(_));
+	}
 
-  #[test]
-  fn topic_ser_de_escaped() {
-    let json = r#""\test""#;
-    let topic: Topic = serde_json::from_str(json).expect("should parse");
-    assert_matches!(topic.0, Cow::Owned(_));
-  }
+	#[test]
+	fn topic_ser_de_escaped() {
+		let json = r#""\test""#;
+		let topic: Topic = serde_json::from_str(json).expect("should parse");
+		assert_matches!(topic.0, Cow::Owned(_));
+	}
 }

@@ -1,8 +1,8 @@
 [workspace]
 members = [
-  "crates/discovery",
-  "crates/discovery-macros",
-  "crates/entity-state",
-  #"crates/mqtt",
+	"crates/discovery",
+	"crates/discovery-macros",
+	"crates/entity-state",
+	# "crates/mqtt",
 ]
 resolver = "2"

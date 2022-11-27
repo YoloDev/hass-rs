@@ -2,35 +2,35 @@ use crate::{AttributeKey, AttributeValue, Attributes, EntityState, EntityStateVa
 
 pub struct Sensor<'a, S, K, V>
 where
-  K: AttributeKey<'a>,
-  V: AttributeValue<'a>,
-  S: EntityStateValue,
+	K: AttributeKey<'a>,
+	V: AttributeValue<'a>,
+	S: EntityStateValue,
 {
-  state: S,
-  attributes: Attributes<'a, K, V, Self>,
+	state: S,
+	attributes: Attributes<'a, K, V, Self>,
 }
 
 impl<'a, S, K, V> EntityState<'a, K, V> for Sensor<'a, S, K, V>
 where
-  K: AttributeKey<'a>,
-  V: AttributeValue<'a>,
-  S: EntityStateValue,
+	K: AttributeKey<'a>,
+	V: AttributeValue<'a>,
+	S: EntityStateValue,
 {
-  type State = S;
+	type State = S;
 
-  fn get(&self) -> &Self::State {
-    &self.state
-  }
+	fn get(&self) -> &Self::State {
+		&self.state
+	}
 
-  fn get_mut(&mut self) -> &mut Self::State {
-    &mut self.state
-  }
+	fn get_mut(&mut self) -> &mut Self::State {
+		&mut self.state
+	}
 
-  fn attributes(&self) -> &Attributes<'a, K, V, Self> {
-    &self.attributes
-  }
+	fn attributes(&self) -> &Attributes<'a, K, V, Self> {
+		&self.attributes
+	}
 
-  fn attributes_mut(&mut self) -> &mut Attributes<'a, K, V, Self> {
-    &mut self.attributes
-  }
+	fn attributes_mut(&mut self) -> &mut Attributes<'a, K, V, Self> {
+		&mut self.attributes
+	}
 }
