@@ -3,6 +3,6 @@ members = [
 	"crates/discovery",
 	"crates/discovery-macros",
 	"crates/entity-state",
-	# "crates/mqtt",
+	"crates/mqtt-client",
 ]
 resolver = "2"

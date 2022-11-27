@@ -1,5 +1,5 @@
 [package]
-name = "hass-mqtt"
+name = "hass-mqtt-client"
 version = "0.0.0"
 edition = "2021"
 description = "home-assistant MQTT client"
@@ -12,6 +12,8 @@ repository = "https://github.com/YoloDev/hass-rs"
 [dependencies]
 bytes = "1"
 color-eyre = "0.6"
+dirs = "4"
+error-stack = { version = "0.2", features = ["spantrace"] }
 flume = "0.10"
 paho-mqtt = { version = "0.11", features = ["vendored-ssl"] }
 serde = { version = "1", features = ["derive"] }

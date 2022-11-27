@@ -1,6 +1,7 @@
 mod availability;
 mod client;
 mod options;
+mod topics;
 mod tracking;
 
 pub use options::HassMqttOptions;
