@@ -2,6 +2,10 @@
 name = "hass-mqtt-discovery-macros"
 version = "0.0.0"
 edition = "2021"
+description = "home-assistant MQTT discovery types macros"
+license = "MIT"
+authors = ["Aleksander Heintz <alxandr@alxandr.me>"]
+repository = "https://github.com/YoloDev/hass-rs"
 
 [lib]
 proc-macro = true
