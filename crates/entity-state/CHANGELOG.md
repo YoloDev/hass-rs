@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.2.0](https://github.com/YoloDev/hass-rs/compare/hass-entity-state-v0.1.0...hass-entity-state-v0.2.0) (2022-11-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* large API rewrite
+
+### Features
+
+* discovery document macro ([#19](https://github.com/YoloDev/hass-rs/issues/19)) ([1278754](https://github.com/YoloDev/hass-rs/commit/1278754bd5e559df1a4d012903ea65df9b25589b))
+
 ## 0.1.0 (2021-11-16)
 
 
