@@ -10,15 +10,28 @@ repository = "https://github.com/YoloDev/hass-rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+async-trait = "0.1"
 bytes = "1"
 color-eyre = "0.6"
 dirs = "4"
 error-stack = { version = "0.2", features = ["spantrace"] }
 flume = "0.10"
-paho-mqtt = { version = "0.11", features = ["vendored-ssl"] }
+paho-mqtt = { version = "0.11", optional = true }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 slug = "0.1"
 thiserror = "1"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
+
+[features]
+default = []
+paho = ["paho-mqtt"]
+
+[target.'cfg(unix)'.features]
+default = ["paho"]
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu"]
+rustdoc-args = ["--cfg", "doc_cfg"]

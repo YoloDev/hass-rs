@@ -1,11 +1,12 @@
 use crate::{
 	entity::EntityTopic,
-	options::HassMqttConnection,
+	provider::{
+		HassMqttConnection, MqttClient, MqttMessage, MqttMessageBuilder, MqttProvider, MqttProviderExt,
+	},
 	topics::{DiscoveryTopicConfig, PrivateTopicConfig},
 	HassMqttOptions,
 };
 use error_stack::{report, IntoReport, ResultExt};
-use paho_mqtt::AsyncClient as MqttClient;
 use std::{sync::Arc, thread, time::Duration};
 use thiserror::Error;
 use tokio::sync::oneshot;
@@ -64,18 +65,18 @@ struct EntityCommandResult {
 	topic: Arc<str>,
 }
 
-struct Client {
+struct Client<T: MqttClient> {
 	_discovery: DiscoveryTopicConfig,
 	_private: PrivateTopicConfig,
-	client: MqttClient,
+	client: T,
 	receiver: flume::Receiver<Command>,
 }
 
-impl Client {
+impl<T: MqttClient> Client<T> {
 	fn new(
 		discovery: DiscoveryTopicConfig,
 		private: PrivateTopicConfig,
-		client: MqttClient,
+		client: T,
 		receiver: flume::Receiver<Command>,
 	) -> Self {
 		Client {
@@ -87,22 +88,23 @@ impl Client {
 	}
 
 	async fn run(mut self) {
+		// TODO: command OR mqtt message
 		while let Ok(cmd) = self.receiver.recv_async().await {
 			self.handle(cmd).await
 		}
 
 		// Try to gracefully exit
-		let mut builder = paho_mqtt::DisconnectOptionsBuilder::new();
-		builder.timeout(Duration::from_secs(10));
-		builder.publish_will_message();
-		let _ = self.client.disconnect(builder.finalize()).await;
+		// let mut builder = paho_mqtt::DisconnectOptionsBuilder::new();
+		// builder.timeout(Duration::from_secs(10));
+		// builder.publish_will_message();
+		let _ = self.client.disconnect(Duration::from_secs(10), true).await;
 	}
 
 	async fn handle(&mut self, _cmd: Command) {
 		todo!()
 	}
 
-	async fn spawn(
+	async fn spawn<P: MqttProvider<Client = T>>(
 		options: HassMqttOptions,
 	) -> error_stack::Result<flume::Sender<Command>, ConnectError> {
 		let (result_sender, result_receiver) = tokio::sync::oneshot::channel();
@@ -129,8 +131,7 @@ impl Client {
 						discovery,
 						private,
 						client: mqtt_client,
-					} = match options
-						.create_client()
+					} = match <P as MqttProviderExt>::create_client(&options)
 						.await
 						.change_context(ConnectError::Connect)
 					{
@@ -165,8 +166,10 @@ pub struct HassMqttClient {
 }
 
 impl HassMqttClient {
-	pub async fn new(options: HassMqttOptions) -> error_stack::Result<Self, ConnectError> {
-		let sender = Client::spawn(options).await?;
+	pub async fn new<T: MqttProvider>(
+		options: HassMqttOptions,
+	) -> error_stack::Result<Self, ConnectError> {
+		let sender = Client::spawn::<T>(options).await?;
 		Ok(Self { sender })
 	}
 
@@ -195,7 +198,7 @@ impl HassMqttClient {
 }
 
 impl HassMqttOptions {
-	pub async fn build(self) -> error_stack::Result<HassMqttClient, ConnectError> {
-		HassMqttClient::new(self).await
+	pub async fn build<T: MqttProvider>(self) -> error_stack::Result<HassMqttClient, ConnectError> {
+		HassMqttClient::new::<T>(self).await
 	}
 }

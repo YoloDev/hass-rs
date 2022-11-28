@@ -5,6 +5,8 @@ mod options;
 mod topics;
 mod tracking;
 
+pub mod provider;
+
 pub use options::HassMqttOptions;
 
 #[repr(u8)]
