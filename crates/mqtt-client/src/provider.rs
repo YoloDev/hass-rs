@@ -24,6 +24,7 @@ pub trait MqttProvider: sealed::Sealed {
 	type Message: MqttMessage;
 	type Error: MqttProviderCreateError;
 
+	#[allow(clippy::too_many_arguments)]
 	async fn create(
 		options: &crate::options::MqttOptions,
 		client_id: &str,
@@ -54,10 +55,10 @@ pub(crate) trait MqttProviderExt: MqttProvider {
 		let client_id = format!("{}_{}", options.application_name.slug(), options.node_id);
 		let discovery_topic = DiscoveryTopicConfig::new(&*options.discovery_prefix, node_id.clone());
 		let private_topic = PrivateTopicConfig::new(
-			&*options
+			options
 				.private_prefix
 				.as_deref()
-				.unwrap_or(options.application_name.slug()),
+				.unwrap_or_else(|| options.application_name.slug()),
 			node_id.clone(),
 		);
 		let online_message = private_topic

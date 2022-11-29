@@ -27,11 +27,8 @@ tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 
 [features]
-default = []
-paho = ["paho-mqtt"]
-
-[target.'cfg(unix)'.features]
 default = ["paho"]
+paho = ["paho-mqtt"]
 
 [package.metadata.docs.rs]
 all-features = true

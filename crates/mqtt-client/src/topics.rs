@@ -31,7 +31,7 @@ impl ApplicationName {
 	}
 
 	pub(crate) fn slug(&self) -> &str {
-		&*self.slug
+		&self.slug
 	}
 }
 
