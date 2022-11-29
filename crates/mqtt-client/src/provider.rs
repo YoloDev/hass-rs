@@ -4,6 +4,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use error_stack::ResultExt;
+use futures::stream::Stream;
 
 #[cfg(feature = "paho")]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "paho")))]
@@ -91,7 +92,10 @@ impl<T: MqttProvider> MqttProviderExt for T {}
 #[async_trait(?Send)]
 pub trait MqttClient: sealed::Sealed {
 	type Message: MqttMessage;
+	type Messages: Stream<Item = Self::Message>;
 	type DisconnectError: std::error::Error;
+
+	fn messages(&self) -> Self::Messages;
 
 	async fn disconnect(
 		&self,

@@ -7,16 +7,32 @@ use super::{sealed, MqttClient, MqttMessage, MqttMessageBuilder, MqttProvider};
 use async_trait::async_trait;
 use dirs::{cache_dir, state_dir};
 use error_stack::{IntoReport, ResultExt};
-use paho_mqtt::AsyncClient;
+use futures::{stream::FusedStream, Stream};
+use paho_mqtt::{AsyncClient, AsyncReceiver, Message};
+use pin_project::pin_project;
 use std::{
 	convert::Infallible,
 	path::{Path, PathBuf},
+	pin::Pin,
+	task::{Context, Poll},
 	time::Duration,
 };
 use thiserror::Error;
 use tokio::net::lookup_host;
 
 pub struct PahoMqtt;
+
+pub struct PahoClient {
+	client: AsyncClient,
+	messages: PahoStream,
+}
+
+#[pin_project]
+#[derive(Clone)]
+pub struct PahoStream {
+	#[pin]
+	inner: AsyncReceiver<Option<Message>>,
+}
 
 #[derive(Debug, Clone, Error)]
 pub enum PahoProviderConnectError {
@@ -54,8 +70,8 @@ impl super::MqttProviderCreateError for PahoProviderConnectError {
 impl sealed::Sealed for PahoMqtt {}
 #[async_trait(?Send)]
 impl MqttProvider for PahoMqtt {
-	type Client = AsyncClient;
-	type Message = paho_mqtt::Message;
+	type Client = PahoClient;
+	type Message = Message;
 	type Error = PahoProviderConnectError;
 
 	async fn create(
@@ -80,11 +96,12 @@ impl MqttProvider for PahoMqtt {
 	}
 }
 
-impl sealed::Sealed for AsyncClient {}
+impl sealed::Sealed for PahoClient {}
 
 #[async_trait(?Send)]
-impl MqttClient for AsyncClient {
-	type Message = paho_mqtt::Message;
+impl MqttClient for PahoClient {
+	type Message = Message;
+	type Messages = PahoStream;
 	type DisconnectError = paho_mqtt::Error;
 
 	async fn disconnect(
@@ -98,10 +115,14 @@ impl MqttClient for AsyncClient {
 			builder.publish_will_message();
 		}
 
-		AsyncClient::disconnect(self, builder.finalize())
+		AsyncClient::disconnect(&self.client, builder.finalize())
 			.await
 			.into_report()
 			.map(|_| ())
+	}
+
+	fn messages(&self) -> Self::Messages {
+		self.messages.clone()
 	}
 }
 
@@ -147,6 +168,27 @@ impl MqttMessageBuilder for paho_mqtt::MessageBuilder {
 	}
 }
 
+impl Stream for PahoStream {
+	type Item = Message;
+
+	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+		loop {
+			match self.as_mut().project().inner.poll_next(cx) {
+				Poll::Ready(Some(Some(message))) => return Poll::Ready(Some(message)),
+				Poll::Ready(Some(None)) => continue,
+				Poll::Ready(None) => return Poll::Ready(None),
+				Poll::Pending => return Poll::Pending,
+			}
+		}
+	}
+}
+
+impl FusedStream for PahoStream {
+	fn is_terminated(&self) -> bool {
+		FusedStream::is_terminated(&self.inner)
+	}
+}
+
 fn join_persistence_file(
 	dir: &Path,
 	application_name: &ApplicationName,
@@ -186,8 +228,8 @@ pub(crate) async fn create_client(
 	node_id: &NodeId,
 	online_message: paho_mqtt::Message,
 	offline_message: paho_mqtt::Message,
-) -> error_stack::Result<AsyncClient, PahoProviderConnectError> {
-	let client = paho_mqtt::AsyncClient::new(as_create_options(
+) -> error_stack::Result<PahoClient, PahoProviderConnectError> {
+	let mut client = paho_mqtt::AsyncClient::new(as_create_options(
 		options,
 		client_id,
 		application_name,
@@ -226,11 +268,15 @@ pub(crate) async fn create_client(
 		let _ = c.publish(online_message.clone()).wait();
 	});
 
+	let messages = PahoStream {
+		inner: client.get_stream(100),
+	};
+
 	client
 		.connect(builder.finalize())
 		.await
 		.into_report()
 		.change_context(PahoProviderConnectError::Connect)?;
 
-	Ok(client)
+	Ok(PahoClient { client, messages })
 }

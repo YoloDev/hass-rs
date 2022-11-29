@@ -5,7 +5,9 @@ use crate::{
 	HassMqttOptions,
 };
 use error_stack::{report, IntoReport, ResultExt};
-use std::{sync::Arc, thread, time::Duration};
+use futures::{pin_mut, stream::Fuse, Stream, StreamExt};
+use pin_project::pin_project;
+use std::{sync::Arc, task::Poll, thread, time::Duration};
 use thiserror::Error;
 use tokio::sync::oneshot;
 
@@ -63,46 +65,42 @@ struct EntityCommandResult {
 	topic: Arc<str>,
 }
 
-struct Client<T: MqttClient> {
+struct Client {
 	_discovery: DiscoveryTopicConfig,
 	_private: PrivateTopicConfig,
-	client: T,
-	receiver: flume::Receiver<Command>,
 }
 
-impl<T: MqttClient> Client<T> {
-	fn new(
-		discovery: DiscoveryTopicConfig,
-		private: PrivateTopicConfig,
-		client: T,
-		receiver: flume::Receiver<Command>,
-	) -> Self {
+impl Client {
+	fn new(discovery: DiscoveryTopicConfig, private: PrivateTopicConfig) -> Self {
 		Client {
 			_discovery: discovery,
 			_private: private,
-			client,
-			receiver,
 		}
 	}
 
-	async fn run(mut self) {
-		// TODO: command OR mqtt message
-		while let Ok(cmd) = self.receiver.recv_async().await {
-			self.handle(cmd).await
+	async fn run<T: MqttClient>(mut self, client: T, receiver: flume::Receiver<Command>) {
+		let events = Events::new(&receiver, &client).fuse();
+		pin_mut!(events);
+
+		while let Some(evt) = events.next().await {
+			match evt {
+				Event::Command(cmd) => self.handle_command(cmd, &client).await,
+				Event::Message(msg) => self.handle_message(msg, &client).await,
+			}
 		}
 
-		// Try to gracefully exit
-		// let mut builder = paho_mqtt::DisconnectOptionsBuilder::new();
-		// builder.timeout(Duration::from_secs(10));
-		// builder.publish_will_message();
-		let _ = self.client.disconnect(Duration::from_secs(10), true).await;
+		let _ = client.disconnect(Duration::from_secs(10), true).await;
 	}
 
-	async fn handle(&mut self, _cmd: Command) {
+	async fn handle_command<T: MqttClient>(&mut self, _cmd: Command, _client: &T) {
 		todo!()
 	}
 
-	async fn spawn<P: MqttProvider<Client = T>>(
+	async fn handle_message<T: MqttClient>(&mut self, _msg: T::Message, _client: &T) {
+		todo!()
+	}
+
+	async fn spawn<P: MqttProvider>(
 		options: HassMqttOptions,
 	) -> error_stack::Result<flume::Sender<Command>, ConnectError> {
 		let (result_sender, result_receiver) = tokio::sync::oneshot::channel();
@@ -140,10 +138,10 @@ impl<T: MqttClient> Client<T> {
 						}
 					};
 
-					let client = Client::new(discovery, private, mqtt_client, receiver);
+					let client = Client::new(discovery, private);
 
 					let _ = result_sender.send(Ok(sender));
-					client.run().await;
+					client.run(mqtt_client, receiver).await;
 				});
 				todo!();
 			})
@@ -198,5 +196,49 @@ impl HassMqttClient {
 impl HassMqttOptions {
 	pub async fn build<T: MqttProvider>(self) -> error_stack::Result<HassMqttClient, ConnectError> {
 		HassMqttClient::new::<T>(self).await
+	}
+}
+
+enum Event<T: MqttClient> {
+	Command(Command),
+	Message(T::Message),
+}
+
+#[pin_project]
+struct Events<'a, T: MqttClient> {
+	#[pin]
+	command_stream: Fuse<flume::r#async::RecvStream<'a, Command>>,
+
+	#[pin]
+	message_stream: Fuse<T::Messages>,
+}
+
+impl<'a, T: MqttClient> Events<'a, T> {
+	fn new(commands: &'a flume::Receiver<Command>, client: &T) -> Self {
+		Self {
+			command_stream: commands.stream().fuse(),
+			message_stream: client.messages().fuse(),
+		}
+	}
+}
+
+impl<'a, T: MqttClient> Stream for Events<'a, T> {
+	type Item = Event<T>;
+
+	fn poll_next(
+		self: std::pin::Pin<&mut Self>,
+		cx: &mut std::task::Context<'_>,
+	) -> std::task::Poll<Option<Self::Item>> {
+		let this = self.project();
+
+		match this.message_stream.poll_next(cx) {
+			Poll::Ready(Some(msg)) => Poll::Ready(Some(Event::Message(msg))),
+			Poll::Ready(None) => Poll::Ready(None),
+			Poll::Pending => match this.command_stream.poll_next(cx) {
+				Poll::Ready(Some(cmd)) => Poll::Ready(Some(Event::Command(cmd))),
+				Poll::Ready(None) => Poll::Ready(None),
+				Poll::Pending => Poll::Pending,
+			},
+		}
 	}
 }
