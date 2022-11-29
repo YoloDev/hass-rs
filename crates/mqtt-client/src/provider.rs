@@ -1,5 +1,5 @@
 use crate::{
-	topics::{DiscoveryTopicConfig, NodeId, PrivateTopicConfig},
+	topics::{ApplicationName, DiscoveryTopicConfig, NodeId, PrivateTopicConfig},
 	MqttQosLevel,
 };
 use async_trait::async_trait;
@@ -25,6 +25,9 @@ pub trait MqttProvider: sealed::Sealed {
 
 	async fn create(
 		options: &crate::options::MqttOptions,
+		client_id: &str,
+		application_name: &ApplicationName,
+		node_id: &NodeId,
 		discovery_topic: &DiscoveryTopicConfig,
 		private_topic: &PrivateTopicConfig,
 		online_message: Self::Message,
@@ -47,8 +50,15 @@ pub(crate) trait MqttProviderExt: MqttProvider {
 		options: &crate::HassMqttOptions,
 	) -> error_stack::Result<HassMqttConnection<Self::Client>, Self::Error> {
 		let node_id = NodeId::new(&*options.node_id);
+		let client_id = format!("{}_{}", options.application_name.slug(), options.node_id);
 		let discovery_topic = DiscoveryTopicConfig::new(&*options.discovery_prefix, node_id.clone());
-		let private_topic = PrivateTopicConfig::new(&*options.private_prefix, node_id);
+		let private_topic = PrivateTopicConfig::new(
+			&*options
+				.private_prefix
+				.as_deref()
+				.unwrap_or(options.application_name.slug()),
+			node_id.clone(),
+		);
 		let online_message = private_topic
 			.online_message()
 			.change_context(Self::Error::create_message("online"))?;
@@ -58,6 +68,9 @@ pub(crate) trait MqttProviderExt: MqttProvider {
 
 		let client = Self::create(
 			&options.mqtt,
+			&client_id,
+			&options.application_name,
+			&node_id,
 			&discovery_topic,
 			&private_topic,
 			online_message,

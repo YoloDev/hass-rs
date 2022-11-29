@@ -1,13 +1,43 @@
-use std::sync::Arc;
-
 use crate::provider::{MqttMessage, MqttMessageBuilder};
+use slug::slugify;
+use std::{fmt, sync::Arc};
 
 #[derive(Clone)]
-pub(crate) struct NodeId(Arc<str>);
+pub struct NodeId(Arc<str>);
 
 impl NodeId {
 	pub(crate) fn new(value: impl Into<Arc<str>>) -> Self {
 		NodeId(value.into())
+	}
+}
+
+impl fmt::Display for NodeId {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		fmt::Display::fmt(&*self.0, f)
+	}
+}
+
+#[derive(Clone)]
+pub struct ApplicationName {
+	value: Arc<str>,
+	slug: Arc<str>,
+}
+
+impl ApplicationName {
+	pub(crate) fn new(value: impl Into<Arc<str>>) -> Self {
+		let value = value.into();
+		let slug = Arc::from(slugify(&value));
+		ApplicationName { value, slug }
+	}
+
+	pub(crate) fn slug(&self) -> &str {
+		&*self.slug
+	}
+}
+
+impl fmt::Display for ApplicationName {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		fmt::Display::fmt(&*self.value, f)
 	}
 }
 

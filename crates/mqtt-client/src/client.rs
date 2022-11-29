@@ -1,8 +1,6 @@
 use crate::{
 	entity::EntityTopic,
-	provider::{
-		HassMqttConnection, MqttClient, MqttMessage, MqttMessageBuilder, MqttProvider, MqttProviderExt,
-	},
+	provider::{HassMqttConnection, MqttClient, MqttProvider, MqttProviderExt},
 	topics::{DiscoveryTopicConfig, PrivateTopicConfig},
 	HassMqttOptions,
 };
@@ -110,7 +108,7 @@ impl<T: MqttClient> Client<T> {
 		let (result_sender, result_receiver) = tokio::sync::oneshot::channel();
 
 		thread::Builder::new()
-			.name(format!("mqtt-{}-hass", options.application_slug))
+			.name(format!("mqtt-{}-hass", options.application_name.slug()))
 			.spawn(move || {
 				let (sender, receiver) = flume::unbounded();
 				let rt = match tokio::runtime::Builder::new_current_thread()

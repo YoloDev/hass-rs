@@ -1,24 +1,12 @@
-use crate::{
-	provider::{MqttClient, MqttMessage, MqttMessageBuilder},
-	topics::{DiscoveryTopicConfig, NodeId, PrivateTopicConfig},
-};
-use dirs::{cache_dir, state_dir};
-use error_stack::{IntoReport, ResultExt};
-use slug::slugify;
-use std::{
-	path::{Path, PathBuf},
-	time::Duration,
-};
-use thiserror::Error;
-use tokio::net::lookup_host;
+use crate::topics::ApplicationName;
+use std::{path::PathBuf, sync::Arc};
 
 #[derive(Clone)]
 pub struct HassMqttOptions {
 	pub(crate) mqtt: MqttOptions,
 	pub(crate) discovery_prefix: String,
-	pub(crate) private_prefix: String,
-	pub(crate) application_name: String,
-	pub(crate) application_slug: String,
+	pub(crate) private_prefix: Option<String>,
+	pub(crate) application_name: ApplicationName,
 	pub(crate) node_id: String,
 }
 
@@ -26,29 +14,25 @@ impl HassMqttOptions {
 	const DEFAULT_DISCOVERY_PREFIX: &'static str = "homeassistant";
 	const DEFAULT_NODE_ID: &'static str = "default";
 
-	pub fn new(host: impl Into<String>, application_name: impl Into<String>) -> Self {
-		let application_name = application_name.into();
-		let application_slug = slugify(&application_name);
+	pub fn new(host: impl Into<String>, application_name: impl Into<Arc<str>>) -> Self {
+		let application_name = ApplicationName::new(application_name);
 
 		HassMqttOptions {
 			mqtt: MqttOptions::new(host),
 			discovery_prefix: Self::DEFAULT_DISCOVERY_PREFIX.into(),
-			private_prefix: application_slug.clone(),
-			application_slug,
+			private_prefix: None,
 			application_name,
 			node_id: Self::DEFAULT_NODE_ID.into(),
 		}
 	}
 
-	pub fn new_tls(host: impl Into<String>, application_name: impl Into<String>) -> Self {
-		let application_name = application_name.into();
-		let application_slug = slugify(&application_name);
+	pub fn new_tls(host: impl Into<String>, application_name: impl Into<Arc<str>>) -> Self {
+		let application_name = ApplicationName::new(application_name);
 
 		HassMqttOptions {
 			mqtt: MqttOptions::new_tls(host),
 			discovery_prefix: Self::DEFAULT_DISCOVERY_PREFIX.into(),
-			private_prefix: application_slug.clone(),
-			application_slug,
+			private_prefix: None,
 			application_name,
 			node_id: Self::DEFAULT_NODE_ID.into(),
 		}
@@ -75,7 +59,7 @@ impl HassMqttOptions {
 	}
 
 	pub fn private_prefix(mut self, private_prefix: impl Into<String>) -> Self {
-		self.private_prefix = private_prefix.into();
+		self.private_prefix = Some(private_prefix.into());
 		self
 	}
 
@@ -92,10 +76,6 @@ impl HassMqttOptions {
 	pub fn persistence_file(mut self, file: impl Into<PathBuf>) -> Self {
 		self.mqtt.persistence_file(file);
 		self
-	}
-
-	fn join_persistence_file(&self, dir: &Path) -> PathBuf {
-		dir.join(format!("{}_{}.mqtt", self.application_name, self.node_id))
 	}
 }
 

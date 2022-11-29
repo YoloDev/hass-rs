@@ -1,11 +1,20 @@
-use crate::topics::{DiscoveryTopicConfig, PrivateTopicConfig};
+use crate::{
+	options::MqttPersistence,
+	topics::{ApplicationName, DiscoveryTopicConfig, NodeId, PrivateTopicConfig},
+};
 
 use super::{sealed, MqttClient, MqttMessage, MqttMessageBuilder, MqttProvider};
 use async_trait::async_trait;
-use error_stack::IntoReport;
+use dirs::{cache_dir, state_dir};
+use error_stack::{IntoReport, ResultExt};
 use paho_mqtt::AsyncClient;
-use std::convert::Infallible;
+use std::{
+	convert::Infallible,
+	path::{Path, PathBuf},
+	time::Duration,
+};
 use thiserror::Error;
+use tokio::net::lookup_host;
 
 pub struct PahoMqtt;
 
@@ -51,12 +60,23 @@ impl MqttProvider for PahoMqtt {
 
 	async fn create(
 		options: &crate::options::MqttOptions,
-		discovery_topic: &DiscoveryTopicConfig,
-		private_topic: &PrivateTopicConfig,
+		client_id: &str,
+		application_name: &ApplicationName,
+		node_id: &NodeId,
+		_discovery_topic: &DiscoveryTopicConfig,
+		_private_topic: &PrivateTopicConfig,
 		online_message: Self::Message,
 		offline_message: Self::Message,
 	) -> error_stack::Result<Self::Client, Self::Error> {
-		todo!()
+		create_client(
+			options,
+			client_id,
+			application_name,
+			node_id,
+			online_message,
+			offline_message,
+		)
+		.await
 	}
 }
 
@@ -119,7 +139,7 @@ impl MqttMessageBuilder for paho_mqtt::MessageBuilder {
 	}
 
 	fn retain(self, retain: bool) -> Self {
-		paho_mqtt::MessageBuilder::retain(self, retain)
+		paho_mqtt::MessageBuilder::retained(self, retain)
 	}
 
 	fn build(self) -> error_stack::Result<Self::Message, Self::Error> {
@@ -127,80 +147,90 @@ impl MqttMessageBuilder for paho_mqtt::MessageBuilder {
 	}
 }
 
-// fn as_create_options(&self) -> error_stack::Result<paho_mqtt::CreateOptions, MqttOptionsError> {
-// 	let builder = paho_mqtt::CreateOptionsBuilder::new()
-// 		.client_id(format!("{}_{}", self.application_name, self.node_id))
-// 		.server_uri(format!("{}:{}", self.mqtt.host, self.mqtt.port))
-// 		.send_while_disconnected(true);
+fn join_persistence_file(
+	dir: &Path,
+	application_name: &ApplicationName,
+	node_id: &NodeId,
+) -> PathBuf {
+	dir.join(format!("{}.{}.mqtt", application_name.slug(), node_id))
+}
 
-// 	let persistence_file = match &self.mqtt.persitence {
-// 		MqttPersistence::Default => state_dir()
-// 			.or_else(cache_dir)
-// 			.map(|dir| self.join_persistence_file(&dir))
-// 			.ok_or(MqttOptionsError::StateDir)?,
-// 		MqttPersistence::File(d) => d.clone(),
-// 		MqttPersistence::Directory(d) => self.join_persistence_file(d),
-// 	};
+fn as_create_options(
+	options: &crate::options::MqttOptions,
+	client_id: &str,
+	application_name: &ApplicationName,
+	node_id: &NodeId,
+) -> error_stack::Result<paho_mqtt::CreateOptions, PahoProviderConnectError> {
+	let builder = paho_mqtt::CreateOptionsBuilder::new()
+		.client_id(client_id)
+		.send_while_disconnected(true);
 
-// 	let builder = builder.persistence(persistence_file);
+	let persistence_file = match &options.persitence {
+		MqttPersistence::Default => state_dir()
+			.or_else(cache_dir)
+			.map(|dir| join_persistence_file(&dir, application_name, node_id))
+			.ok_or(PahoProviderConnectError::StateDir)?,
+		MqttPersistence::File(d) => d.clone(),
+		MqttPersistence::Directory(d) => join_persistence_file(d, application_name, node_id),
+	};
 
-// 	Ok(builder.finalize())
-// }
+	let builder = builder.persistence(persistence_file);
 
-// pub(crate) async fn create_client(
-// 	&self,
-// ) -> error_stack::Result<HassMqttConnection, MqttOptionsError> {
-// 	let node_id = NodeId::new(&*self.node_id);
-// 	let discovery_topic = DiscoveryTopicConfig::new(&*self.discovery_prefix, node_id.clone());
-// 	let private_topic = PrivateTopicConfig::new(&*self.private_prefix, node_id);
+	Ok(builder.finalize())
+}
 
-// 	let client = paho_mqtt::AsyncClient::new(self.as_create_options()?)
-// 		.into_report()
-// 		.change_context(MqttOptionsError::Client)?;
+pub(crate) async fn create_client(
+	options: &crate::options::MqttOptions,
+	client_id: &str,
+	application_name: &ApplicationName,
+	node_id: &NodeId,
+	online_message: paho_mqtt::Message,
+	offline_message: paho_mqtt::Message,
+) -> error_stack::Result<AsyncClient, PahoProviderConnectError> {
+	let client = paho_mqtt::AsyncClient::new(as_create_options(
+		options,
+		client_id,
+		application_name,
+		node_id,
+	)?)
+	.into_report()
+	.change_context(PahoProviderConnectError::Client)?;
 
-// 	let mut builder = paho_mqtt::ConnectOptionsBuilder::new();
-// 	let hosts = lookup_host((&*self.mqtt.host, self.mqtt.port))
-// 		.await
-// 		.into_report()
-// 		.change_context(MqttOptionsError::resolve_host(
-// 			&self.mqtt.host,
-// 			self.mqtt.port,
-// 		))?
-// 		.map(|addr| format!("tcp://{addr}"))
-// 		.collect::<Vec<_>>();
+	let mut builder = paho_mqtt::ConnectOptionsBuilder::new();
+	let hosts = lookup_host((&*options.host, options.port))
+		.await
+		.into_report()
+		.change_context(PahoProviderConnectError::resolve_host(
+			&options.host,
+			options.port,
+		))?
+		.map(|addr| format!("tcp://{addr}"))
+		.collect::<Vec<_>>();
 
-// 	builder
-// 		.server_uris(&hosts)
-// 		.automatic_reconnect(Duration::from_secs(5), Duration::from_secs(60 * 5));
+	builder
+		.server_uris(&hosts)
+		.automatic_reconnect(Duration::from_secs(5), Duration::from_secs(60 * 5));
 
-// 	let availability_topic = private_topic.node_topic("available");
-// 	let will_message = availability_message(&availability_topic, "offline");
-// 	let online_message = availability_message(&availability_topic, "online");
+	if options.tls {
+		builder.ssl_options(paho_mqtt::SslOptions::new());
+	}
 
-// 	builder.will_message(will_message);
-// 	if self.mqtt.tls {
-// 		builder.ssl_options(paho_mqtt::SslOptions::new());
-// 	}
+	if let Some(auth) = &options.auth {
+		builder.user_name(auth.username.clone());
+		builder.password(auth.password.clone());
+	}
 
-// 	if let Some(auth) = &self.mqtt.auth {
-// 		builder.user_name(auth.username.clone());
-// 		builder.password(auth.password.clone());
-// 	}
+	builder.will_message(offline_message);
+	client.set_connected_callback(move |c| {
+		// TODO: log
+		let _ = c.publish(online_message.clone()).wait();
+	});
 
-// 	client.set_connected_callback(move |c| {
-// 		// TODO: log
-// 		let _ = c.publish(online_message.clone()).wait();
-// 	});
+	client
+		.connect(builder.finalize())
+		.await
+		.into_report()
+		.change_context(PahoProviderConnectError::Connect)?;
 
-// 	client
-// 		.connect(builder.finalize())
-// 		.await
-// 		.into_report()
-// 		.change_context(MqttOptionsError::Connect)?;
-
-// 	Ok(HassMqttConnection {
-// 		discovery: discovery_topic,
-// 		private: private_topic,
-// 		client,
-// 	})
-// }
+	Ok(client)
+}
