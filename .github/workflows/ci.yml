@@ -22,14 +22,10 @@ jobs:
         (github.ref != 'refs/heads/main' &&
         !startsWith(github.ref, 'refs/tags/')) }}
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
-        include:
-          - os: ubuntu-latest
-            experimental: false
-          - os: macos-latest
-            experimental: false
-          - os: windows-latest
-            experimental: true
+        os:
+          - macos-latest
+          # - windows-latest
+          - ubuntu-latest
 
     steps:
       - name: Configure git

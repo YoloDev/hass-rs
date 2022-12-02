@@ -1,5 +1,5 @@
 use crate::{
-	topics::{ApplicationName, DiscoveryTopicConfig, NodeId, PrivateTopicConfig},
+	topics::{ApplicationName, NodeId, TopicsConfig},
 	MqttQosLevel,
 };
 use async_trait::async_trait;
@@ -30,8 +30,7 @@ pub trait MqttProvider: sealed::Sealed {
 		client_id: &str,
 		application_name: &ApplicationName,
 		node_id: &NodeId,
-		discovery_topic: &DiscoveryTopicConfig,
-		private_topic: &PrivateTopicConfig,
+		topics: &TopicsConfig,
 		online_message: Self::Message,
 		offline_message: Self::Message,
 	) -> error_stack::Result<Self::Client, Self::Error>;
@@ -41,8 +40,7 @@ pub(crate) struct HassMqttConnection<T>
 where
 	T: MqttClient,
 {
-	pub(crate) discovery: DiscoveryTopicConfig,
-	pub(crate) private: PrivateTopicConfig,
+	pub(crate) topics: TopicsConfig,
 	pub(crate) client: T,
 }
 
@@ -53,18 +51,18 @@ pub(crate) trait MqttProviderExt: MqttProvider {
 	) -> error_stack::Result<HassMqttConnection<Self::Client>, Self::Error> {
 		let node_id = NodeId::new(&*options.node_id);
 		let client_id = format!("{}_{}", options.application_name.slug(), options.node_id);
-		let discovery_topic = DiscoveryTopicConfig::new(&*options.discovery_prefix, node_id.clone());
-		let private_topic = PrivateTopicConfig::new(
+		let topics = TopicsConfig::new(
 			options
 				.private_prefix
 				.as_deref()
 				.unwrap_or_else(|| options.application_name.slug()),
+			&*options.discovery_prefix,
 			node_id.clone(),
 		);
-		let online_message = private_topic
+		let online_message = topics
 			.online_message()
 			.change_context(Self::Error::create_message("online"))?;
-		let offline_message = private_topic
+		let offline_message = topics
 			.offline_message()
 			.change_context(Self::Error::create_message("offline"))?;
 
@@ -73,17 +71,12 @@ pub(crate) trait MqttProviderExt: MqttProvider {
 			&client_id,
 			&options.application_name,
 			&node_id,
-			&discovery_topic,
-			&private_topic,
+			&topics,
 			online_message,
 			offline_message,
 		)
 		.await?;
-		Ok(HassMqttConnection {
-			discovery: discovery_topic,
-			private: private_topic,
-			client,
-		})
+		Ok(HassMqttConnection { topics, client })
 	}
 }
 
@@ -94,9 +87,19 @@ impl<T: MqttProvider> MqttProviderExt for T {}
 pub trait MqttClient: sealed::Sealed {
 	type Message: MqttMessage;
 	type Messages: Stream<Item = Self::Message>;
-	type DisconnectError: std::error::Error;
+	type PublishError: std::error::Error + Send + Sync + 'static;
+	type SubscribeError: std::error::Error + Send + Sync + 'static;
+	type DisconnectError: std::error::Error + Send + Sync + 'static;
 
 	fn messages(&self) -> Self::Messages;
+
+	async fn publish(&self, message: Self::Message) -> error_stack::Result<(), Self::PublishError>;
+
+	async fn subscribe(
+		&self,
+		topic: String,
+		qos: MqttQosLevel,
+	) -> error_stack::Result<(), Self::SubscribeError>;
 
 	async fn disconnect(
 		&self,
@@ -109,6 +112,8 @@ pub trait MqttMessage: sealed::Sealed + Clone {
 	type Builder: MqttMessageBuilder<Message = Self>;
 
 	fn builder() -> Self::Builder;
+	fn topic(&self) -> &str;
+	fn payload(&self) -> &[u8];
 }
 pub trait MqttMessageBuilder: sealed::Sealed {
 	type Message: MqttMessage;

@@ -42,35 +42,37 @@ impl fmt::Display for ApplicationName {
 }
 
 #[derive(Clone)]
-pub struct DiscoveryTopicConfig {
-	_prefix: Arc<str>,
-	_node_id: NodeId,
-}
-
-impl DiscoveryTopicConfig {
-	pub(crate) fn new(prefix: impl Into<Arc<str>>, node_id: NodeId) -> Self {
-		DiscoveryTopicConfig {
-			_prefix: prefix.into(),
-			_node_id: node_id,
-		}
-	}
-}
-
-#[derive(Clone)]
-pub struct PrivateTopicConfig {
-	prefix: Arc<str>,
+pub struct TopicsConfig {
+	private_prefix: Arc<str>,
+	discovery_prefix: Arc<str>,
 	node_id: NodeId,
 }
 
-impl PrivateTopicConfig {
+impl TopicsConfig {
 	pub(crate) const ONLINE_PLAYLOAD: &'static str = "online";
 	pub(crate) const OFFLINE_PLAYLOAD: &'static str = "offline";
 
-	pub(crate) fn new(prefix: impl Into<Arc<str>>, node_id: NodeId) -> Self {
-		PrivateTopicConfig {
-			prefix: prefix.into(),
+	pub(crate) fn new(
+		private_prefix: impl Into<Arc<str>>,
+		discovery_prefix: impl Into<Arc<str>>,
+		node_id: NodeId,
+	) -> Self {
+		TopicsConfig {
+			private_prefix: private_prefix.into(),
+			discovery_prefix: discovery_prefix.into(),
 			node_id,
 		}
+	}
+
+	fn discovery_topic(&self, domain: &str, entity_id: &str) -> String {
+		format!(
+			"{}/{}/{}/{}/config",
+			self.discovery_prefix, domain, self.node_id, entity_id
+		)
+	}
+
+	pub(crate) fn entity(&self, domain: &str, entity_id: &str) -> EntityTopicsConfig {
+		EntityTopicsConfig::new(self, domain, entity_id)
 	}
 
 	pub(crate) fn available(&self) -> String {
@@ -78,7 +80,24 @@ impl PrivateTopicConfig {
 	}
 
 	pub(crate) fn node_topic(&self, topic: impl AsRef<str>) -> String {
-		format!("{}/{}/{}", self.prefix, self.node_id.0, topic.as_ref())
+		format!(
+			"{}/{}/{}",
+			self.private_prefix,
+			self.node_id,
+			topic.as_ref()
+		)
+	}
+
+	fn entity_topic(&self, domain: &str, entity_id: &str, kind: &str, name: &str) -> String {
+		self.node_topic(format!("{}/{}/{}/{}", domain, entity_id, kind, name,))
+	}
+
+	fn state_topic(&self, domain: &str, entity_id: &str, name: &str) -> String {
+		self.entity_topic(domain, entity_id, "state", name)
+	}
+
+	fn command_topic(&self, domain: &str, entity_id: &str, name: &str) -> String {
+		self.entity_topic(domain, entity_id, "command", name)
 	}
 
 	pub(crate) fn online_message<T: MqttMessage>(
@@ -91,6 +110,40 @@ impl PrivateTopicConfig {
 		&self,
 	) -> error_stack::Result<T, <<T as MqttMessage>::Builder as MqttMessageBuilder>::Error> {
 		availability_message(&self.available(), Self::OFFLINE_PLAYLOAD)
+	}
+}
+
+pub(crate) struct EntityTopicsConfig {
+	topics: TopicsConfig,
+	domain: Arc<str>,
+	entity_id: Arc<str>,
+}
+
+impl EntityTopicsConfig {
+	fn new(
+		topics: &TopicsConfig,
+		domain: impl Into<Arc<str>>,
+		entity_id: impl Into<Arc<str>>,
+	) -> Self {
+		EntityTopicsConfig {
+			topics: topics.clone(),
+			domain: domain.into(),
+			entity_id: entity_id.into(),
+		}
+	}
+
+	pub(crate) fn discovery_topic(&self) -> String {
+		self.topics.discovery_topic(&self.domain, &self.entity_id)
+	}
+
+	pub(crate) fn state_topic(&self, name: &str) -> String {
+		self.topics.state_topic(&self.domain, &self.entity_id, name)
+	}
+
+	pub(crate) fn command_topic(&self, name: &str) -> String {
+		self
+			.topics
+			.command_topic(&self.domain, &self.entity_id, name)
 	}
 }
 

@@ -1,6 +1,7 @@
 use crate::{
 	options::MqttPersistence,
-	topics::{ApplicationName, DiscoveryTopicConfig, NodeId, PrivateTopicConfig},
+	topics::{ApplicationName, NodeId, TopicsConfig},
+	MqttQosLevel,
 };
 
 use super::{sealed, MqttClient, MqttMessage, MqttMessageBuilder, MqttProvider};
@@ -79,8 +80,7 @@ impl MqttProvider for PahoMqtt {
 		client_id: &str,
 		application_name: &ApplicationName,
 		node_id: &NodeId,
-		_discovery_topic: &DiscoveryTopicConfig,
-		_private_topic: &PrivateTopicConfig,
+		_topics: &TopicsConfig,
 		online_message: Self::Message,
 		offline_message: Self::Message,
 	) -> error_stack::Result<Self::Client, Self::Error> {
@@ -102,7 +102,26 @@ impl sealed::Sealed for PahoClient {}
 impl MqttClient for PahoClient {
 	type Message = Message;
 	type Messages = PahoStream;
+	type PublishError = paho_mqtt::Error;
+	type SubscribeError = paho_mqtt::Error;
 	type DisconnectError = paho_mqtt::Error;
+
+	async fn publish(&self, message: Message) -> error_stack::Result<(), Self::PublishError> {
+		self.client.publish(message).await.into_report()
+	}
+
+	async fn subscribe(
+		&self,
+		topic: String,
+		qos: MqttQosLevel,
+	) -> error_stack::Result<(), Self::SubscribeError> {
+		self
+			.client
+			.subscribe(topic, qos.into())
+			.await
+			.into_report()
+			.map(|_| ())
+	}
 
 	async fn disconnect(
 		&self,
@@ -132,6 +151,14 @@ impl MqttMessage for paho_mqtt::Message {
 
 	fn builder() -> Self::Builder {
 		paho_mqtt::MessageBuilder::new()
+	}
+
+	fn topic(&self) -> &str {
+		self.topic()
+	}
+
+	fn payload(&self) -> &[u8] {
+		self.payload()
 	}
 }
 
