@@ -50,7 +50,7 @@ impl ValuesKey {
 	fn get<'a, T>(&self, router: &'a Router<T>) -> &'a [Value<T>] {
 		match self.0 {
 			0 => &[],
-			idx => &*router.values[(idx - 1) as usize],
+			idx => &router.values[(idx - 1) as usize],
 		}
 	}
 
@@ -66,7 +66,7 @@ impl ValuesKey {
 		}
 	}
 
-	fn remove<T>(&mut self, values: &mut Vec<Vec<Value<T>>>, key: u16) -> Option<T> {
+	fn remove<T>(&mut self, values: &mut [Vec<Value<T>>], key: u16) -> Option<T> {
 		match self.0 {
 			0 => None,
 			idx => {
