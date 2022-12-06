@@ -191,8 +191,8 @@ impl Client {
 
 	async fn handle_message<T: MqttClient>(&mut self, msg: T::Message, _client: &T) {
 		let topic = msg.topic();
-		let handlers = self.router.matches_with_keys(topic);
-		if handlers.len() == 0 {
+		let matches = self.router.matches(topic);
+		if matches.len() == 0 {
 			return;
 		}
 
@@ -202,9 +202,9 @@ impl Client {
 		};
 
 		let mut to_remove = Vec::new();
-		for (key, handler) in handlers {
+		for handler in matches {
 			if handler.send(message.clone()).is_err() {
-				to_remove.push(key);
+				to_remove.push(handler.id());
 			}
 		}
 
