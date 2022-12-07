@@ -1,18 +1,34 @@
+mod command;
+mod subscription;
+
+use self::{
+	command::{
+		ClientCommand, Command, CommandResult, EntityCommand, FromClientCommand, PublishCommand,
+		SubscribeCommand,
+	},
+	subscription::{SubscriptionToken, Subscriptions},
+};
 use crate::{
 	entity::EntityTopic,
-	provider::{
-		HassMqttConnection, MqttClient, MqttMessage, MqttMessageBuilder, MqttProvider, MqttProviderExt,
-	},
+	provider::{HassMqttConnection, MqttClient, MqttMessage, MqttProvider, MqttProviderExt},
 	router::Router,
-	topics::{EntityTopicsConfig, TopicsConfig},
+	topics::TopicsConfig,
 	HassMqttOptions, MqttQosLevel,
 };
 use error_stack::{report, IntoReport, ResultExt};
 use futures::{pin_mut, stream::Fuse, Stream, StreamExt};
 use pin_project::pin_project;
-use std::{sync::Arc, task::Poll, thread, time::Duration};
+use std::{
+	pin::Pin,
+	sync::Arc,
+	task::{Context, Poll},
+	thread,
+	time::Duration,
+};
 use thiserror::Error;
-use tokio::sync::oneshot;
+
+// TODO: These should probably be private and wrapped
+pub use command::{EntityCommandError, PublishCommandError, SubscribeCommandError};
 
 #[derive(Clone, Debug, Error)]
 pub enum ConnectError {
@@ -26,112 +42,35 @@ pub enum ConnectError {
 	CreateRuntime,
 }
 
-#[derive(Clone, Debug, Error)]
-pub enum ClientError {
-	#[error("failed to create entity topic for {domain}.{entity_id}")]
-	Entity { domain: String, entity_id: String },
-
-	#[error("failed to create MQTT message for topic '{topic}'")]
-	CreateMessage { topic: String },
-
-	#[error("failed to publish MQTT message for topic '{topic}'")]
-	Publish { topic: String },
-
-	#[error("failed to subscribe to MQTT topic '{topic}'")]
-	Subscribe { topic: String },
-}
-
-impl ClientError {
-	pub fn entity(domain: impl Into<String>, entity_id: impl Into<String>) -> Self {
-		let domain = domain.into();
-		let entity_id = entity_id.into();
-		ClientError::Entity { domain, entity_id }
-	}
-}
-
-enum Command {
-	Entity {
-		domain: Arc<str>,
-		entity_id: Arc<str>,
-		return_channel: oneshot::Sender<EntityCommandResult>,
-	},
-
-	Publish {
-		topic: String,
-		payload: Vec<u8>,
-		retained: bool,
-		return_channel: oneshot::Sender<error_stack::Result<(), ClientError>>,
-	},
-
-	Subscribe {
-		topic: String,
-		qos: MqttQosLevel,
-		return_channel: oneshot::Sender<error_stack::Result<flume::Receiver<Message>, ClientError>>,
-	},
-}
-
-impl Command {
-	pub fn entity(
-		domain: Arc<str>,
-		entity_id: Arc<str>,
-	) -> (Self, oneshot::Receiver<EntityCommandResult>) {
-		let (return_channel, return_receiver) = oneshot::channel();
-		let cmd = Command::Entity {
-			domain,
-			entity_id,
-			return_channel,
-		};
-		(cmd, return_receiver)
-	}
-
-	pub fn publish(
-		topic: String,
-		payload: Vec<u8>,
-		retained: bool,
-	) -> (
-		Self,
-		oneshot::Receiver<error_stack::Result<(), ClientError>>,
-	) {
-		let (return_channel, return_receiver) = oneshot::channel();
-		let cmd = Command::Publish {
-			topic,
-			payload,
-			retained,
-			return_channel,
-		};
-		(cmd, return_receiver)
-	}
-
-	pub fn subscribe(
-		topic: String,
-		qos: MqttQosLevel,
-	) -> (
-		Self,
-		oneshot::Receiver<error_stack::Result<flume::Receiver<Message>, ClientError>>,
-	) {
-		let (return_channel, return_receiver) = oneshot::channel();
-		let cmd = Command::Subscribe {
-			topic,
-			qos,
-			return_channel,
-		};
-		(cmd, return_receiver)
-	}
-}
-
-struct EntityCommandResult {
-	topics: EntityTopicsConfig,
+#[derive(Clone)]
+pub(crate) struct Message {
+	pub topic: Arc<str>,
+	pub payload: Arc<[u8]>,
+	pub retained: bool,
 }
 
 #[derive(Clone)]
-pub struct Message {
+#[pin_project]
+pub(crate) struct Subscription {
 	pub topic: Arc<str>,
-	pub payload: Arc<[u8]>,
+	pub qos: MqttQosLevel,
+	pub token: SubscriptionToken,
+	#[pin]
+	pub stream: flume::r#async::RecvStream<'static, Message>,
+}
+
+impl Stream for Subscription {
+	type Item = Message;
+
+	fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+		self.project().stream.poll_next(cx)
+	}
 }
 
 struct Client {
 	topics: TopicsConfig,
 	router: Router<flume::Sender<Message>>,
+	subscriptions: Subscriptions,
 }
 
 impl Client {
@@ -139,6 +78,7 @@ impl Client {
 		Client {
 			topics,
 			router: Router::new(),
+			subscriptions: Subscriptions::new(),
 		}
 	}
 
@@ -157,36 +97,7 @@ impl Client {
 	}
 
 	async fn handle_command<T: MqttClient>(&mut self, cmd: Command, client: &T) {
-		match cmd {
-			Command::Entity {
-				domain,
-				entity_id,
-				return_channel,
-			} => {
-				let _ = return_channel.send(self.handle_entity_command(client, domain, entity_id).await);
-			}
-
-			Command::Publish {
-				topic,
-				payload,
-				retained,
-				return_channel,
-			} => {
-				let _ = return_channel.send(
-					self
-						.handle_publish_command(client, topic, payload, retained)
-						.await,
-				);
-			}
-
-			Command::Subscribe {
-				topic,
-				qos,
-				return_channel,
-			} => {
-				let _ = return_channel.send(self.handle_subscribe_command(client, topic, qos).await);
-			}
-		}
+		cmd.run(self, client).await
 	}
 
 	async fn handle_message<T: MqttClient>(&mut self, msg: T::Message, _client: &T) {
@@ -199,6 +110,7 @@ impl Client {
 		let message = Message {
 			topic: topic.into(),
 			payload: msg.payload().into(),
+			retained: msg.retained(),
 		};
 
 		let mut to_remove = Vec::new();
@@ -211,66 +123,6 @@ impl Client {
 		for key in to_remove {
 			self.router.remove(key);
 		}
-	}
-
-	async fn handle_entity_command<T: MqttClient>(
-		&mut self,
-		_client: &T,
-		domain: Arc<str>,
-		entity_id: Arc<str>,
-	) -> EntityCommandResult {
-		let topics_config = self.topics.entity(&domain, &entity_id);
-
-		EntityCommandResult {
-			topics: topics_config,
-		}
-	}
-
-	async fn handle_publish_command<T: MqttClient>(
-		&mut self,
-		client: &T,
-		topic: String,
-		payload: Vec<u8>,
-		retained: bool,
-	) -> error_stack::Result<(), ClientError> {
-		let msg = <T::Message as MqttMessage>::builder()
-			.topic(topic.clone())
-			.payload(payload)
-			.retain(retained)
-			.build()
-			.change_context_lazy(|| ClientError::CreateMessage {
-				topic: topic.clone(),
-			})?;
-
-		client
-			.publish(msg)
-			.await
-			.change_context_lazy(|| ClientError::Publish { topic })
-	}
-
-	async fn handle_subscribe_command<T: MqttClient>(
-		&mut self,
-		client: &T,
-		topic: String,
-		qos: MqttQosLevel,
-	) -> error_stack::Result<flume::Receiver<Message>, ClientError> {
-		client
-			.subscribe(topic.clone(), qos)
-			.await
-			.change_context_lazy(|| ClientError::Subscribe {
-				topic: topic.clone(),
-			})?;
-
-		let (sender, receiver) = flume::unbounded();
-		self.router.insert(&topic, sender);
-		client
-			.subscribe(topic.clone(), qos)
-			.await
-			.change_context_lazy(|| ClientError::Subscribe {
-				topic: topic.clone(),
-			})?;
-
-		Ok(receiver)
 	}
 
 	async fn spawn<P: MqttProvider>(
@@ -340,76 +192,73 @@ impl HassMqttClient {
 		Ok(Self { sender })
 	}
 
+	async fn command<T>(&self, cmd: T) -> CommandResult<T>
+	where
+		T: ClientCommand,
+		Command: FromClientCommand<T>,
+	{
+		let cmd = Arc::new(cmd);
+		let (msg, receiver) = Command::from_command(cmd.clone());
+		self
+			.sender
+			.send_async(msg)
+			.await
+			.into_report()
+			.change_context_lazy(|| cmd.create_error())?;
+
+		match receiver.await {
+			Ok(r) => r,
+			Err(e) => Err(report!(e).change_context(cmd.create_error())),
+		}
+	}
+
 	pub async fn entity(
 		&self,
 		domain: impl Into<Arc<str>>,
 		entity_id: impl Into<Arc<str>>,
-	) -> error_stack::Result<EntityTopic, ClientError> {
-		let entity_id = entity_id.into();
-		let domain = domain.into();
+	) -> error_stack::Result<EntityTopic, EntityCommandError> {
+		let result = self
+			.command(EntityCommand::new(domain.into(), entity_id.into()))
+			.await?;
 
-		let (cmd, ret) = Command::entity(domain.clone(), entity_id.clone());
-
-		self
-			.sender
-			.send_async(cmd)
-			.await
-			.into_report()
-			.change_context_lazy(|| ClientError::entity(&*domain, &*entity_id))?;
-
-		match ret.await {
-			Ok(EntityCommandResult { topics }) => Ok(EntityTopic::new(self.clone(), topics)),
-			Err(e) => Err(report!(e).change_context(ClientError::entity(&*domain, &*entity_id))),
-		}
+		Ok(EntityTopic::new(self.clone(), result.topics))
 	}
 
 	pub(crate) async fn publish(
 		&self,
-		topic: String,
-		payload: impl Into<Vec<u8>>,
+		topic: impl Into<Arc<str>>,
+		payload: impl Into<Arc<[u8]>>,
 		retained: bool,
-	) -> error_stack::Result<(), ClientError> {
-		let payload = payload.into();
-
-		let (cmd, ret) = Command::publish(topic.clone(), payload, retained);
-
+		qos: MqttQosLevel,
+	) -> error_stack::Result<(), PublishCommandError> {
 		self
-			.sender
-			.send_async(cmd)
-			.await
-			.into_report()
-			.change_context_lazy(|| ClientError::Publish {
-				topic: topic.clone(),
-			})?;
+			.command(PublishCommand::new(
+				topic.into(),
+				payload.into(),
+				retained,
+				qos,
+			))
+			.await?;
 
-		match ret.await {
-			Ok(Ok(())) => Ok(()),
-			Ok(Err(e)) => Err(e),
-			Err(e) => Err(report!(e).change_context(ClientError::Publish { topic })),
-		}
+		Ok(())
 	}
 
 	pub(crate) async fn subscribe(
 		&self,
-		topic: String,
+		topic: impl Into<Arc<str>>,
 		qos: MqttQosLevel,
-	) -> error_stack::Result<flume::Receiver<Message>, ClientError> {
-		let (cmd, ret) = Command::subscribe(topic.clone(), qos);
+	) -> error_stack::Result<Subscription, SubscribeCommandError> {
+		let topic = topic.into();
+		let result = self
+			.command(SubscribeCommand::new(topic.clone(), qos))
+			.await?;
 
-		self
-			.sender
-			.send_async(cmd)
-			.await
-			.into_report()
-			.change_context_lazy(|| ClientError::Subscribe {
-				topic: topic.clone(),
-			})?;
-
-		match ret.await {
-			Ok(Ok(ret)) => Ok(ret),
-			Ok(Err(e)) => Err(e),
-			Err(e) => Err(report!(e).change_context(ClientError::Subscribe { topic })),
-		}
+		Ok(Subscription {
+			topic,
+			qos,
+			token: result.token,
+			stream: result.receiver.into_stream(),
+		})
 	}
 }
 

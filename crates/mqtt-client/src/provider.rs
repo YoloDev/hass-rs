@@ -97,7 +97,7 @@ pub trait MqttClient: sealed::Sealed {
 
 	async fn subscribe(
 		&self,
-		topic: String,
+		topic: impl Into<String>,
 		qos: MqttQosLevel,
 	) -> error_stack::Result<(), Self::SubscribeError>;
 
@@ -114,6 +114,7 @@ pub trait MqttMessage: sealed::Sealed + Clone {
 	fn builder() -> Self::Builder;
 	fn topic(&self) -> &str;
 	fn payload(&self) -> &[u8];
+	fn retained(&self) -> bool;
 }
 pub trait MqttMessageBuilder: sealed::Sealed {
 	type Message: MqttMessage;

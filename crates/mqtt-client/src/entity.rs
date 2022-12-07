@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 use futures::Stream;
 use pin_project::pin_project;
 
 use crate::{
-	client::{ClientError, HassMqttClient, Message},
+	client::{self, HassMqttClient, PublishCommandError, SubscribeCommandError, Subscription},
 	topics::EntityTopicsConfig,
 	MqttQosLevel,
 };
@@ -19,11 +21,12 @@ impl EntityTopic {
 
 	pub async fn publish(
 		&self,
-		payload: impl Into<Vec<u8>>,
+		payload: impl Into<Arc<[u8]>>,
 		retained: bool,
-	) -> error_stack::Result<(), ClientError> {
+		qos: MqttQosLevel,
+	) -> error_stack::Result<(), PublishCommandError> {
 		let topic = self.topics.discovery_topic();
-		self.client.publish(topic, payload, retained).await
+		self.client.publish(topic, payload, retained, qos).await
 	}
 
 	pub fn state_topic(&self, name: &str) -> StateTopic {
@@ -34,10 +37,10 @@ impl EntityTopic {
 		&self,
 		name: &str,
 		qos: MqttQosLevel,
-	) -> error_stack::Result<CommandTopic, ClientError> {
+	) -> error_stack::Result<CommandTopic, SubscribeCommandError> {
 		let topic = self.topics.command_topic(name);
-		let receiver = self.client.subscribe(topic.clone(), qos).await?;
-		Ok(CommandTopic::new(self.client.clone(), topic, receiver))
+		let subscription = self.client.subscribe(topic.clone(), qos).await?;
+		Ok(CommandTopic::new(self.client.clone(), subscription))
 	}
 }
 
@@ -53,12 +56,13 @@ impl StateTopic {
 
 	pub async fn publish(
 		&self,
-		payload: impl Into<Vec<u8>>,
+		payload: impl Into<Arc<[u8]>>,
 		retained: bool,
-	) -> error_stack::Result<(), ClientError> {
+		qos: MqttQosLevel,
+	) -> error_stack::Result<(), PublishCommandError> {
 		self
 			.client
-			.publish(self.topic.clone(), payload, retained)
+			.publish(self.topic.clone(), payload, retained, qos)
 			.await
 	}
 }
@@ -66,21 +70,15 @@ impl StateTopic {
 #[pin_project]
 pub struct CommandTopic {
 	_client: HassMqttClient,
-	_topic: String,
 	#[pin]
-	channel: flume::r#async::RecvStream<'static, Message>,
+	subscription: Subscription,
 }
 
 impl CommandTopic {
-	pub(crate) fn new(
-		client: HassMqttClient,
-		topic: String,
-		channel: flume::Receiver<Message>,
-	) -> Self {
+	pub(crate) fn new(client: HassMqttClient, subscription: Subscription) -> Self {
 		CommandTopic {
 			_client: client,
-			_topic: topic,
-			channel: channel.into_stream(),
+			subscription,
 		}
 	}
 }
@@ -92,6 +90,26 @@ impl Stream for CommandTopic {
 		self: std::pin::Pin<&mut Self>,
 		cx: &mut std::task::Context<'_>,
 	) -> std::task::Poll<Option<Self::Item>> {
-		self.project().channel.poll_next(cx)
+		self
+			.project()
+			.subscription
+			.poll_next(cx)
+			.map(|v| v.map(Message))
+	}
+}
+
+pub struct Message(client::Message);
+
+impl Message {
+	pub fn topic(&self) -> &str {
+		&self.0.topic
+	}
+
+	pub fn payload(&self) -> &[u8] {
+		&self.0.payload
+	}
+
+	pub fn retained(&self) -> bool {
+		self.0.retained
 	}
 }

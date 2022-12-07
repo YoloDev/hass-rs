@@ -112,7 +112,7 @@ impl MqttClient for PahoClient {
 
 	async fn subscribe(
 		&self,
-		topic: String,
+		topic: impl Into<String>,
 		qos: MqttQosLevel,
 	) -> error_stack::Result<(), Self::SubscribeError> {
 		self
@@ -159,6 +159,10 @@ impl MqttMessage for paho_mqtt::Message {
 
 	fn payload(&self) -> &[u8] {
 		self.payload()
+	}
+
+	fn retained(&self) -> bool {
+		self.retained()
 	}
 }
 
