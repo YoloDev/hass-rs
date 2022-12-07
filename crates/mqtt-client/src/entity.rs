@@ -94,22 +94,36 @@ impl Stream for CommandTopic {
 			.project()
 			.subscription
 			.poll_next(cx)
-			.map(|v| v.map(Message))
+			.map(|v| v.map(Message::from))
 	}
 }
 
-pub struct Message(client::Message);
+pub struct Message {
+	topic: Arc<str>,
+	payload: Arc<[u8]>,
+	retained: bool,
+}
+
+impl From<client::Message> for Message {
+	fn from(msg: client::Message) -> Self {
+		Message {
+			topic: msg.topic,
+			payload: msg.payload,
+			retained: msg.retained,
+		}
+	}
+}
 
 impl Message {
 	pub fn topic(&self) -> &str {
-		&self.0.topic
+		&self.topic
 	}
 
 	pub fn payload(&self) -> &[u8] {
-		&self.0.payload
+		&self.payload
 	}
 
 	pub fn retained(&self) -> bool {
-		self.0.retained
+		self.retained
 	}
 }
