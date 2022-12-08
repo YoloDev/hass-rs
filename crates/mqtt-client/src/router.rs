@@ -1,68 +1,27 @@
-use std::{collections::BTreeMap, fmt, ops, rc::Rc};
-
-pub struct Id<T>(u16, std::marker::PhantomData<T>);
-
-impl<T> fmt::Debug for Id<T> {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "Id({})", self.0)
-	}
-}
-
-impl<T> Clone for Id<T> {
-	fn clone(&self) -> Self {
-		Self(self.0, std::marker::PhantomData)
-	}
-}
-
-impl<T> Copy for Id<T> {}
-
-impl<T> PartialEq for Id<T> {
-	fn eq(&self, other: &Self) -> bool {
-		self.0 == other.0
-	}
-}
-
-impl<T> Eq for Id<T> {}
-
-impl<T> PartialOrd for Id<T> {
-	fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-		Some(self.cmp(other))
-	}
-}
-
-impl<T> Ord for Id<T> {
-	fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-		self.0.cmp(&other.0)
-	}
-}
-
-impl<T> std::hash::Hash for Id<T> {
-	fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-		self.0.hash(state);
-	}
-}
+use generational_arena::{Arena, Index};
+use std::{collections::BTreeMap, ops, rc::Rc};
 
 #[derive(Debug)]
 struct Node<T> {
 	route: Rc<str>,
 	value: T,
-	id: Id<T>,
+	id: Index,
 }
 
 #[derive(Debug)]
-struct Nodes<T> {
+struct Nodes {
 	route: Rc<str>,
-	nodes: Vec<Node<T>>,
+	nodes: Vec<Index>,
 }
 
-impl<T> Nodes<T> {
-	fn push(&mut self, id: Id<T>, value: T) {
-		self.nodes.push(Node::new(self.route.clone(), value, id));
+impl Nodes {
+	fn push(&mut self, id: Index) {
+		self.nodes.push(id)
 	}
 
-	fn remove(&mut self, id: Id<T>) -> Option<T> {
-		let index = self.nodes.iter().position(|node| node.id == id)?;
-		Some(self.nodes.swap_remove(index).value)
+	fn remove(&mut self, id: Index) -> Option<Index> {
+		let index = self.nodes.iter().position(|node| *node == id)?;
+		Some(self.nodes.swap_remove(index))
 	}
 
 	fn is_empty(&self) -> bool {
@@ -70,31 +29,31 @@ impl<T> Nodes<T> {
 	}
 }
 
-impl<'a, T> IntoIterator for &'a Nodes<T> {
-	type Item = &'a Node<T>;
-	type IntoIter = std::slice::Iter<'a, Node<T>>;
+// impl<'a, T> IntoIterator for &'a Nodes<T> {
+// 	type Item = &'a Node<T>;
+// 	type IntoIter = std::slice::Iter<'a, Node<T>>;
 
-	fn into_iter(self) -> Self::IntoIter {
-		self.nodes.iter()
-	}
-}
+// 	fn into_iter(self) -> Self::IntoIter {
+// 		self.nodes.iter()
+// 	}
+// }
 
 impl<T> Node<T> {
-	pub fn new(route: Rc<str>, value: T, id: Id<T>) -> Self {
+	pub fn new(route: Rc<str>, value: T, id: Index) -> Self {
 		Self { route, value, id }
 	}
 }
 
 #[derive(Debug)]
 pub struct Router<T> {
-	arena: Vec<Node<T>>,
-	routes: BTreeMap<Rc<str>, Nodes<T>>,
+	arena: Arena<Node<T>>,
+	routes: BTreeMap<Rc<str>, Nodes>,
 }
 
 impl<T> Default for Router<T> {
 	fn default() -> Self {
 		Self {
-			arena: Vec::new(),
+			arena: Arena::new(),
 			routes: BTreeMap::new(),
 		}
 	}
@@ -105,54 +64,43 @@ impl<T> Router<T> {
 		Self::default()
 	}
 
-	pub fn insert(&mut self, route: &str, value: T) -> Id<T> {
-		let id = Id(self.arena.len() as u16, std::marker::PhantomData);
+	pub fn insert(&mut self, route: &str, value: T) -> Index {
+		let route = Rc::from(route);
+		let id = self
+			.arena
+			.insert_with(|id| Node::new(Rc::clone(&route), value, id));
+
 		let nodes = self
 			.routes
-			.entry(route.into())
+			.entry(route.clone())
 			.or_insert_with_key(|route| Nodes {
 				route: route.clone(),
 				nodes: Vec::new(),
 			});
 
-		nodes.push(id, value);
+		nodes.push(id);
 		id
 	}
 
-	pub fn remove(&mut self, id: Id<T>) -> Option<(T, Option<Rc<str>>)> {
-		let node = self.arena.get_mut(id.0 as usize)?;
+	pub fn remove(&mut self, id: Index) -> Option<(T, Option<Rc<str>>)> {
+		let node = self.arena.remove(id)?;
 		let nodes = self.routes.get_mut(&node.route)?;
-		let value = nodes.remove(id)?;
+		nodes.remove(id).unwrap();
+
 		if nodes.is_empty() {
 			let route = nodes.route.clone();
 			self.routes.remove(&route);
-			Some((value, Some(route)))
+			Some((node.value, Some(route)))
 		} else {
-			Some((value, None))
+			Some((node.value, None))
 		}
 	}
-
-	// pub fn matches_with_keys<'a>(
-	// 	&'a self,
-	// 	key: &str,
-	// ) -> impl Iterator<Item = (&'a str, &'a T)> + ExactSizeIterator {
-	// 	let nodes = match self.routes.get(key) {
-	// 		Some(nodes) => nodes.nodes.iter(),
-	// 		None => [].iter(),
-	// 	};
-
-	// 	nodes.map(|node| (&*node.route, &node.value))
-	// }
-
-	// pub fn matches<'a>(&'a self, key: &str) -> impl Iterator<Item = &'a T> + ExactSizeIterator {
-	// 	self.matches_with_keys(key).map(|(_, v)| v)
-	// }
 }
 
 pub struct Match<'a, T>(&'a Node<T>);
 
 impl<'a, T> Match<'a, T> {
-	pub fn id(&self) -> Id<T> {
+	pub fn id(&self) -> Index {
 		self.0.id
 	}
 
@@ -189,7 +137,7 @@ impl<T> Router<T> {
 			None => [].iter(),
 		};
 
-		nodes.map(|node| Match(node))
+		nodes.map(|node| Match(&self.arena[*node]))
 	}
 }
 

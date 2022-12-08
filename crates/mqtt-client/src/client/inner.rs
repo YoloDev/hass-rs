@@ -11,7 +11,7 @@ use std::{thread, time::Duration};
 use thiserror::Error;
 use tokio::select;
 
-type RouteId = crate::router::Id<flume::Sender<Message>>;
+type RouteId = generational_arena::Index;
 
 #[derive(Clone, Debug, Error)]
 pub enum ConnectError {

@@ -1,6 +1,5 @@
 mod rand;
 
-use super::Message;
 use futures::FutureExt;
 use std::{
 	future::Future,
@@ -10,7 +9,7 @@ use std::{
 };
 use tokio::sync::oneshot;
 
-type RouteId = crate::router::Id<flume::Sender<Message>>;
+type RouteId = generational_arena::Index;
 
 #[derive(Clone)]
 pub(crate) struct SubscriptionToken {
