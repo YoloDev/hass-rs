@@ -1,8 +1,7 @@
 mod rand;
 
 use super::Message;
-use crate::router::Id;
-use futures::{FutureExt, Stream};
+use futures::FutureExt;
 use std::{
 	future::Future,
 	pin::Pin,
@@ -11,21 +10,23 @@ use std::{
 };
 use tokio::sync::oneshot;
 
+type RouteId = crate::router::Id<flume::Sender<Message>>;
+
 #[derive(Clone)]
 pub(crate) struct SubscriptionToken {
-	_id: Id<flume::Sender<Message>>,
+	_id: RouteId,
 	#[allow(unused)]
 	lifetime: Arc<oneshot::Sender<()>>,
 }
 
 #[derive(Debug)]
 struct SubscriptionRef {
-	id: Id<flume::Sender<Message>>,
+	id: RouteId,
 	lifetime: Box<oneshot::Receiver<()>>,
 }
 
 impl Future for SubscriptionRef {
-	type Output = Id<flume::Sender<Message>>;
+	type Output = RouteId;
 
 	fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
 		let this = self.get_mut();
@@ -47,7 +48,7 @@ impl Subscriptions {
 		Self::default()
 	}
 
-	pub(super) fn insert(&mut self, id: Id<flume::Sender<Message>>) -> SubscriptionToken {
+	pub(super) fn insert(&mut self, id: RouteId) -> SubscriptionToken {
 		let (lifetime_sender, lifetime_receiver) = oneshot::channel();
 		self.subscriptions.push(SubscriptionRef {
 			id,
@@ -59,13 +60,23 @@ impl Subscriptions {
 			lifetime: Arc::new(lifetime_sender),
 		}
 	}
+
+	pub(super) fn dropped(&mut self) -> impl Future<Output = RouteId> + '_ {
+		DroppedSubscriptionsStream {
+			subscriptions: self,
+		}
+	}
 }
 
-impl Stream for Subscriptions {
-	type Item = Id<flume::Sender<Message>>;
+struct DroppedSubscriptionsStream<'a> {
+	subscriptions: &'a mut Subscriptions,
+}
 
-	fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-		let this = self.get_mut();
+impl<'a> Future for DroppedSubscriptionsStream<'a> {
+	type Output = RouteId;
+
+	fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+		let this = &mut self.get_mut().subscriptions;
 		let start = this.rand.fastrand_n(this.subscriptions.len() as u32) as usize;
 
 		let (snd, fst) = this.subscriptions.split_at_mut(start);
@@ -75,7 +86,7 @@ impl Stream for Subscriptions {
 				let id = subscription.id;
 				let idx = this.subscriptions.iter().position(|s| s.id == id).unwrap();
 				this.subscriptions.swap_remove(idx);
-				return Poll::Ready(Some(id));
+				return Poll::Ready(id);
 			}
 		}
 

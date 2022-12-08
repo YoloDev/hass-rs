@@ -1,33 +1,32 @@
-use super::{Client, ClientCommand};
+use super::{ClientCommand, InnerClient};
 use crate::{
-	client::{subscription::SubscriptionToken, Message},
-	provider::MqttClient,
-	MqttQosLevel,
+	client::{subscription::SubscriptionToken, Message, MqttQosLevel},
+	mqtt::MqttClient,
 };
 use async_trait::async_trait;
 use error_stack::ResultExt;
 use std::sync::Arc;
 use thiserror::Error;
 
-pub(in super::super) struct SubscribeCommand {
+pub(crate) struct SubscribeCommand {
 	topic: Arc<str>,
 	qos: MqttQosLevel,
 }
 
 impl SubscribeCommand {
-	pub(in super::super) fn new(topic: Arc<str>, qos: MqttQosLevel) -> Self {
+	pub(crate) fn new(topic: Arc<str>, qos: MqttQosLevel) -> Self {
 		SubscribeCommand { topic, qos }
 	}
 }
 
-pub(in super::super) struct SubscribeCommandResult {
+pub(crate) struct SubscribeCommandResult {
 	pub token: SubscriptionToken,
 	pub receiver: flume::Receiver<Message>,
 }
 
 #[derive(Debug, Error)]
 #[error("failed to subscribe to MQTT topic '{topic}'")]
-pub struct SubscribeCommandError {
+pub(crate) struct SubscribeCommandError {
 	topic: Arc<str>,
 	qos: MqttQosLevel,
 }
@@ -39,7 +38,7 @@ impl ClientCommand for SubscribeCommand {
 
 	async fn run<T: MqttClient>(
 		&self,
-		client: &mut Client,
+		client: &mut InnerClient,
 		mqtt: &T,
 	) -> error_stack::Result<Self::Result, Self::Error> {
 		let (sender, receiver) = flume::unbounded();

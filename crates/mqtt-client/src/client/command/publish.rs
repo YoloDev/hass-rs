@@ -1,14 +1,14 @@
-use super::{Client, ClientCommand};
+use super::{ClientCommand, InnerClient};
 use crate::{
-	provider::{MqttClient, MqttMessage, MqttMessageBuilder},
-	MqttQosLevel,
+	client::MqttQosLevel,
+	mqtt::{MqttClient, MqttMessage, MqttMessageBuilder},
 };
 use async_trait::async_trait;
 use error_stack::ResultExt;
 use std::sync::Arc;
 use thiserror::Error;
 
-pub(in super::super) struct PublishCommand {
+pub(crate) struct PublishCommand {
 	topic: Arc<str>,
 	payload: Arc<[u8]>,
 	retained: bool,
@@ -28,7 +28,7 @@ impl PublishCommand {
 
 #[derive(Debug, Error)]
 #[error("failed to publish MQTT message for topic '{topic}'")]
-pub struct PublishCommandError {
+pub(crate) struct PublishCommandError {
 	topic: Arc<str>,
 	retained: bool,
 	qos: MqttQosLevel,
@@ -41,7 +41,7 @@ impl ClientCommand for PublishCommand {
 
 	async fn run<T: MqttClient>(
 		&self,
-		_client: &mut Client,
+		_client: &mut InnerClient,
 		mqtt: &T,
 	) -> error_stack::Result<Self::Result, Self::Error> {
 		let msg = <T::Message as MqttMessage>::builder()

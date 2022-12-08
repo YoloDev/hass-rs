@@ -119,16 +119,16 @@ impl<T> Router<T> {
 		id
 	}
 
-	pub fn remove(&mut self, id: Id<T>) -> Option<(T, bool)> {
+	pub fn remove(&mut self, id: Id<T>) -> Option<(T, Option<Rc<str>>)> {
 		let node = self.arena.get_mut(id.0 as usize)?;
 		let nodes = self.routes.get_mut(&node.route)?;
 		let value = nodes.remove(id)?;
 		if nodes.is_empty() {
 			let route = nodes.route.clone();
 			self.routes.remove(&route);
-			Some((value, true))
+			Some((value, Some(route)))
 		} else {
-			Some((value, false))
+			Some((value, None))
 		}
 	}
 
@@ -221,9 +221,15 @@ mod tests {
 			vec![2, 4]
 		);
 
-		assert_eq!(router.remove(r1), Some((1, false)));
-		assert_eq!(router.remove(r2), Some((2, false)));
-		assert_eq!(router.remove(r3), Some((3, true)));
-		assert_eq!(router.remove(r4), Some((4, true)));
+		assert_eq!(router.remove(r1), Some((1, None)));
+		assert_eq!(router.remove(r2), Some((2, None)));
+		assert_eq!(
+			router.remove(r3),
+			Some((3, Some("app/default/light/bedroom/brightness".into())))
+		);
+		assert_eq!(
+			router.remove(r4),
+			Some((4, Some("app/default/light/bedroom/temperature".into())))
+		);
 	}
 }

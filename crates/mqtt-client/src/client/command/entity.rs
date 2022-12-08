@@ -1,27 +1,27 @@
-use super::{Client, ClientCommand};
-use crate::{provider::MqttClient, topics::EntityTopicsConfig};
+use super::{ClientCommand, InnerClient};
+use crate::{mqtt::MqttClient, topics::EntityTopicsConfig};
 use async_trait::async_trait;
 use std::sync::Arc;
 use thiserror::Error;
 
-pub(in super::super) struct EntityCommand {
+pub(crate) struct EntityCommand {
 	domain: Arc<str>,
 	entity_id: Arc<str>,
 }
 
 impl EntityCommand {
-	pub fn new(domain: Arc<str>, entity_id: Arc<str>) -> Self {
+	pub(crate) fn new(domain: Arc<str>, entity_id: Arc<str>) -> Self {
 		Self { domain, entity_id }
 	}
 }
 
-pub(in super::super) struct EntityCommandResult {
+pub(crate) struct EntityCommandResult {
 	pub topics: EntityTopicsConfig,
 }
 
 #[derive(Debug, Error)]
 #[error("failed to create entity topic for {domain}.{entity_id}")]
-pub struct EntityCommandError {
+pub(crate) struct EntityCommandError {
 	domain: Arc<str>,
 	entity_id: Arc<str>,
 }
@@ -33,7 +33,7 @@ impl ClientCommand for EntityCommand {
 
 	async fn run<T: MqttClient>(
 		&self,
-		client: &mut Client,
+		client: &mut InnerClient,
 		_mqtt: &T,
 	) -> error_stack::Result<Self::Result, Self::Error> {
 		let topics_config = client.topics.entity(&self.domain, &self.entity_id);

@@ -1,4 +1,4 @@
-use crate::provider::{MqttMessage, MqttMessageBuilder};
+use crate::mqtt::{MqttMessage, MqttMessageBuilder};
 use slug::slugify;
 use std::{fmt, sync::Arc};
 
@@ -115,8 +115,8 @@ impl TopicsConfig {
 
 pub(crate) struct EntityTopicsConfig {
 	topics: TopicsConfig,
-	domain: Arc<str>,
-	entity_id: Arc<str>,
+	pub(crate) domain: Arc<str>,
+	pub(crate) entity_id: Arc<str>,
 }
 
 impl EntityTopicsConfig {

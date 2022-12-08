@@ -2,8 +2,8 @@ mod entity;
 mod publish;
 mod subscribe;
 
-use super::Client;
-use crate::provider::MqttClient;
+use super::{inner::InnerClient, MqttQosLevel};
+use crate::mqtt::MqttClient;
 use async_trait::async_trait;
 use std::sync::Arc;
 use tokio::sync::oneshot;
@@ -12,10 +12,6 @@ pub(super) use entity::EntityCommand;
 pub(super) use publish::PublishCommand;
 pub(super) use subscribe::SubscribeCommand;
 
-pub use entity::EntityCommandError;
-pub use publish::PublishCommandError;
-pub use subscribe::SubscribeCommandError;
-
 #[async_trait(?Send)]
 pub(super) trait ClientCommand {
 	type Result: Send + Sync + 'static;
@@ -23,7 +19,7 @@ pub(super) trait ClientCommand {
 
 	async fn run<T: MqttClient>(
 		&self,
-		client: &mut Client,
+		client: &mut InnerClient,
 		mqtt: &T,
 	) -> error_stack::Result<Self::Result, Self::Error>;
 
@@ -38,16 +34,6 @@ pub(super) type CommandResultReceiver<T> = oneshot::Receiver<CommandResult<T>>;
 pub(super) trait FromClientCommand<T: ClientCommand>: Sized {
 	fn from_command(command: Arc<T>) -> (Self, CommandResultReceiver<T>);
 }
-
-// macro_rules! client_commands {
-// 	(enum $name:ident {
-// 		$($variant:ident),*$(,)?
-// 	}) => {
-// 		enum $name {
-// 			$($variant($variant),)*
-// 		}
-// 	};
-// }
 
 macro_rules! commands {
 	($vis:vis enum $name:ident {
@@ -69,9 +55,17 @@ macro_rules! commands {
 		)*
 
 		impl $name {
+			pub(super) fn from_command<T>(command: Arc<T>) -> (Self, CommandResultReceiver<T>)
+			where
+				T: ClientCommand,
+				Self: FromClientCommand<T>,
+			{
+				<Self as FromClientCommand<T>>::from_command(command)
+			}
+
 			pub(super) async fn run<T: MqttClient>(
 				self,
-				client: &mut Client,
+				client: &mut InnerClient,
 				mqtt: &T,
 			) {
 				match self {
@@ -97,4 +91,21 @@ commands! {
 		PublishCommand,
 		SubscribeCommand,
 	}
+}
+
+pub(super) fn entity(domain: Arc<str>, entity_id: Arc<str>) -> EntityCommand {
+	EntityCommand::new(domain, entity_id)
+}
+
+pub(super) fn publish(
+	topic: Arc<str>,
+	payload: Arc<[u8]>,
+	retained: bool,
+	qos: MqttQosLevel,
+) -> PublishCommand {
+	PublishCommand::new(topic, payload, retained, qos)
+}
+
+pub(super) fn subscribe(topic: Arc<str>, qos: MqttQosLevel) -> SubscribeCommand {
+	SubscribeCommand::new(topic, qos)
 }
