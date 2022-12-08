@@ -136,6 +136,10 @@ impl CommandTopic {
 			subscription,
 		}
 	}
+
+	pub fn topic(&self) -> Arc<str> {
+		self.subscription.topic.clone()
+	}
 }
 
 impl Stream for CommandTopic {

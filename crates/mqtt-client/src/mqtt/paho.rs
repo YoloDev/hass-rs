@@ -104,6 +104,7 @@ impl MqttClient for PahoClient {
 	type Messages = PahoStream;
 	type PublishError = paho_mqtt::Error;
 	type SubscribeError = paho_mqtt::Error;
+	type UnsubscribeError = paho_mqtt::Error;
 	type DisconnectError = paho_mqtt::Error;
 
 	async fn publish(&self, message: Message) -> error_stack::Result<(), Self::PublishError> {
@@ -118,6 +119,18 @@ impl MqttClient for PahoClient {
 		self
 			.client
 			.subscribe(topic, qos.into())
+			.await
+			.into_report()
+			.map(|_| ())
+	}
+
+	async fn unsubscribe(
+		&self,
+		topic: impl Into<String>,
+	) -> error_stack::Result<(), Self::UnsubscribeError> {
+		self
+			.client
+			.unsubscribe(topic)
 			.await
 			.into_report()
 			.map(|_| ())
@@ -293,10 +306,16 @@ pub(crate) async fn create_client(
 		builder.password(auth.password.clone());
 	}
 
+	let runtime = tokio::runtime::Handle::current();
+
 	builder.will_message(offline_message);
 	client.set_connected_callback(move |c| {
-		// TODO: log
-		let _ = c.publish(online_message.clone()).wait();
+		let client = c.clone();
+		let msg = online_message.clone();
+		runtime.spawn(async move {
+			// TODO: log error
+			let _ = client.publish(msg).await;
+		});
 	});
 
 	let messages = PahoStream {

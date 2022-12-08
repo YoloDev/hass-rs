@@ -8,7 +8,11 @@ use futures::stream::Stream;
 
 #[cfg(feature = "paho")]
 #[cfg_attr(doc_cfg, doc(cfg(feature = "paho")))]
-pub mod paho;
+mod paho;
+
+#[cfg(feature = "paho")]
+#[cfg_attr(doc_cfg, doc(cfg(feature = "paho")))]
+pub use paho::PahoMqtt;
 
 mod sealed {
 	pub trait Sealed {}
@@ -89,6 +93,7 @@ pub trait MqttClient: sealed::Sealed {
 	type Messages: Stream<Item = Self::Message>;
 	type PublishError: std::error::Error + Send + Sync + 'static;
 	type SubscribeError: std::error::Error + Send + Sync + 'static;
+	type UnsubscribeError: std::error::Error + Send + Sync + 'static;
 	type DisconnectError: std::error::Error + Send + Sync + 'static;
 
 	fn messages(&self) -> Self::Messages;
@@ -100,6 +105,11 @@ pub trait MqttClient: sealed::Sealed {
 		topic: impl Into<String>,
 		qos: MqttQosLevel,
 	) -> error_stack::Result<(), Self::SubscribeError>;
+
+	async fn unsubscribe(
+		&self,
+		topic: impl Into<String>,
+	) -> error_stack::Result<(), Self::UnsubscribeError>;
 
 	async fn disconnect(
 		&self,

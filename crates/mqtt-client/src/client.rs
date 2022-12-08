@@ -208,4 +208,10 @@ impl HassMqttOptions {
 	) -> error_stack::Result<HassMqttClient, ConnectError> {
 		HassMqttClient::new::<T>(self).await
 	}
+
+	#[cfg(feature = "paho")]
+	#[cfg_attr(doc_cfg, doc(cfg(feature = "paho")))]
+	pub async fn build_paho(self) -> error_stack::Result<HassMqttClient, ConnectError> {
+		self.build::<mqtt::PahoMqtt>().await
+	}
 }

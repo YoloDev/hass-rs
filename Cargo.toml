@@ -4,5 +4,8 @@ members = [
 	"crates/discovery-macros",
 	"crates/entity-state",
 	"crates/mqtt-client",
+
+	# examples
+	"examples/mqtt-light",
 ]
 resolver = "2"

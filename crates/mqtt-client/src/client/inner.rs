@@ -60,12 +60,11 @@ impl InnerClient {
 		let _ = client.disconnect(Duration::from_secs(10), true).await;
 	}
 
-	async fn handle_unsubscribe<T: MqttClient>(&mut self, _tok: RouteId, _client: &T) {
-		todo!()
-		// let (_, remove) = self.router.remove(tok);
-		// if let Some(topic) = topic {
-		// 	self.subscriptions.unsubscribe(topic).await;
-		// }
+	async fn handle_unsubscribe<T: MqttClient>(&mut self, tok: RouteId, client: &T) {
+		if let Some((_, Some(topic))) = self.router.remove(tok) {
+			// TODO: Log error
+			let _ = client.unsubscribe(&*topic).await;
+		}
 	}
 
 	async fn handle_command<T: MqttClient>(&mut self, cmd: Command, client: &T) {
@@ -118,7 +117,7 @@ impl InnerClient {
 					}
 				};
 
-				let _guard = rt.enter();
+				let guard = rt.enter();
 				rt.block_on(async move {
 					let HassMqttConnection {
 						topics,
@@ -139,6 +138,9 @@ impl InnerClient {
 					let _ = result_sender.send(Ok(sender));
 					client.run(mqtt_client, receiver).await;
 				});
+
+				// ensure it lives til this point
+				drop(guard);
 			})
 			.into_report()
 			.change_context(ConnectError::SpawnThread)?;
