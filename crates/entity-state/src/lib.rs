@@ -1,3 +1,5 @@
+pub mod light;
+
 mod attributes;
 mod sensor;
 

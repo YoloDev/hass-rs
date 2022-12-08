@@ -1,9 +1,8 @@
-use darling::{
-	ast::Data, error::Accumulator, util::Flag, Error, FromDeriveInput, FromField, FromMeta,
-};
+use darling::{ast::Data, error::Accumulator, Error, FromDeriveInput, FromField, FromMeta};
+use proc_macro2::Span;
 use quote::quote;
 use std::{collections::BTreeMap, mem};
-use syn::{FieldsNamed, Meta, MetaList, NestedMeta};
+use syn::{spanned::Spanned, FieldsNamed, Meta, MetaList, NestedMeta};
 
 fn common_fields() -> Vec<EntityFieldInput> {
 	let tokens = quote! {{
@@ -113,8 +112,36 @@ pub struct EntityFieldInput {
 	pub ident: Option<syn::Ident>,
 	pub ty: syn::Type,
 	pub attrs: Vec<syn::Attribute>,
-	pub validate: Flag,
+	pub validate: FieldValidation,
 	pub vis: syn::Visibility,
+}
+
+#[derive(Debug)]
+pub enum FieldValidation {
+	None,
+	Default(Option<Span>),
+	With(Span, syn::Path),
+}
+
+impl FromMeta for FieldValidation {
+	fn from_none() -> Option<Self> {
+		Some(FieldValidation::None)
+	}
+
+	fn from_meta(mi: &syn::Meta) -> darling::Result<Self> {
+		match mi {
+			syn::Meta::Path(p) => Ok(Self::Default(Some(p.span()))),
+			syn::Meta::NameValue(nv) => {
+				let path = <syn::Path as FromMeta>::from_value(&nv.lit)?;
+				Ok(Self::With(nv.span(), path))
+			}
+			_ => {
+				// The implementation for () will produce an error for all non-path meta items;
+				// call it to make sure the span behaviors and error messages are the same.
+				Err(<()>::from_meta(mi).unwrap_err())
+			}
+		}
+	}
 }
 
 #[derive(Debug, Default)]

@@ -10,6 +10,7 @@ repository = "https://github.com/YoloDev/hass-rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+enumset = { version = "1", features = ["serde"] }
 error-stack = "0.2"
 nameof = "1"
 semval = { version = "0.5" }

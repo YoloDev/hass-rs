@@ -11,6 +11,7 @@ repository = "https://github.com/YoloDev/hass-rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+enumset = { version = "1", features = ["serde"] }
 paste = "1"
 serde = { version = "1", features = ["derive"] }
 

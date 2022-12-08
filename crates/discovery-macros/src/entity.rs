@@ -128,8 +128,33 @@ struct EntityField {
 	ty: syn::Type,
 	docs: Vec<syn::Attribute>,
 	attrs: Vec<syn::Attribute>,
-	validate: bool,
+	validate: FieldValidation,
 	required: bool,
+}
+
+enum FieldValidation {
+	None,
+	Default,
+	With(syn::Path),
+}
+impl FieldValidation {
+	fn then<R>(&self, f: impl FnOnce(Option<&syn::Path>) -> R) -> Option<R> {
+		match self {
+			Self::None => None,
+			Self::Default => Some(f(None)),
+			Self::With(path) => Some(f(Some(path))),
+		}
+	}
+}
+
+impl From<input::FieldValidation> for FieldValidation {
+	fn from(value: input::FieldValidation) -> Self {
+		match value {
+			input::FieldValidation::None => Self::None,
+			input::FieldValidation::Default(_) => Self::Default,
+			input::FieldValidation::With(_, path) => Self::With(path),
+		}
+	}
 }
 
 impl TryFrom<input::EntityFieldInput> for EntityField {
@@ -154,7 +179,7 @@ impl TryFrom<input::EntityFieldInput> for EntityField {
 			.attrs
 			.into_iter()
 			.partition(|attr| attr.path.is_ident("doc"));
-		let validate = value.validate.is_present();
+		let validate = value.validate.into();
 		let has_default = attrs
 			.iter()
 			.any(|attr| attr.path.is_ident("serde") && attr.tokens.to_string().contains("default"));

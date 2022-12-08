@@ -1,4 +1,5 @@
 use crate::{topic::Topic, validation::CustomValidation};
+use enumset::{EnumSet, EnumSetType};
 use hass_mqtt_discovery_macros::entity_document;
 use std::borrow::Cow;
 
@@ -71,8 +72,9 @@ pub struct Light<'a> {
 
 	/// A list of color modes supported by the list. This is required if
 	/// [color_mode] is `true`.
-	#[serde(borrow, default, skip_serializing_if = "<[ColorMode]>::is_empty")]
-	pub supported_color_modes: Cow<'a, [ColorMode]>,
+	#[entity(validate = "ColorModeSetValidator")]
+	#[serde(default, skip_serializing_if = "EnumSet::is_empty")]
+	pub supported_color_modes: EnumSet<ColorMode>,
 
 	/// Defines the maximum white level (i.e., 100%) of the MQTT device. This
 	/// is used when setting the light to white mode.
@@ -95,32 +97,116 @@ impl<'a> CustomValidation for Light<'a> {
 	}
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+/// Color modes for lights.
+#[derive(EnumSetType, Debug, serde::Serialize, serde::Deserialize)]
+#[enumset(serialize_as_list)]
 pub enum ColorMode {
+	/// The light can be turned on or off. This mode must be the
+	/// only supported mode if supported by the light.
 	#[serde(rename = "onoff")]
 	OnOff,
 
+	/// The light can be dimmed. This mode must be the only supported
+	/// mode if supported by the light.
 	#[serde(rename = "brightness")]
 	Brightness,
 
+	/// The light can be dimmed and its color temperature is present
+	/// in the state.
 	#[serde(rename = "color_temp")]
 	ColorTemp,
 
+	/// The light can be dimmed and its color can be adjusted. The light's
+	/// brightness can be set using the [LightState::brightness] parameter
+	/// and read through the [LightState::brightness] property. The light's
+	/// color can be set using the [LightColorState::hue] and
+	/// [LightColorState::saturation] parameter and read using the same
+	/// properties (not normalized for brightness).
 	#[serde(rename = "hs")]
-	Hs,
+	HueSaturation,
 
-	#[serde(rename = "xy")]
-	Xy,
-
+	/// The light can be dimmed and its color can be adjusted. The light's
+	/// brightness can be set using the [LightState::brightness] parameter
+	/// and read through the [LightState::brightness] property. The light's
+	/// color can be set using the [LightColorState::red], [LightColorState::green],
+	/// and [LightColorState::blue] parameter and read using the same
+	/// properties (not normalized for brightness).
 	#[serde(rename = "rgb")]
-	Rgb,
+	RedGreenBlue,
 
+	/// The light can be dimmed and its color can be adjusted. The light's
+	/// brightness can be set using the [LightState::brightness] parameter
+	/// and read through the [LightState::brightness] property. The light's
+	/// color can be set using the [LightColorState::red], [LightColorState::green],
+	/// [LightColorState::blue], and [LightColorState::white] parameter and
+	/// read using the same properties (not normalized for brightness).
 	#[serde(rename = "rgbw")]
-	Rgbw,
+	RedGreenBlueWhite,
 
+	/// The light can be dimmed and its color can be adjusted. The light's
+	/// brightness can be set using the [LightState::brightness] parameter
+	/// and read through the [LightState::brightness] property. The light's
+	/// color can be set using the [LightColorState::red], [LightColorState::green],
+	/// [LightColorState::blue], [LightColorState::cold_white], and
+	/// [LightColorState::warm_white] parameter and read using the same
+	/// properties (not normalized for brightness).
 	#[serde(rename = "rgbww")]
-	Rgbww,
+	RedGreenBlueWhiteWarmWhite,
 
+	/// The light can be dimmed and its color can be adjusted. In addition,
+	/// the light can be set to white mode. The light's brightness can be
+	/// set using the [LightState::brightness] parameter and read through
+	/// the [LightState::brightness] property. If this mode is supported, the
+	/// light must also support at least one of [ColorMode::HueSaturation],
+	/// [ColorMode::RedGreenBlue], [ColorMode::RedGreenBlueWhite],
+	/// [ColorMode::RedGreenBlueWhiteWarmWhite] or [ColorMode::XY].
 	#[serde(rename = "white")]
 	White,
+
+	/// The light can be dimmed and its color can be adjusted. The light's
+	/// brightness can be set using the [LightState::brightness] parameter
+	/// and read through the [LightState::brightness] property. The light's
+	/// color can be set using the [LightColorState::x] and [LightColorState::y]
+	/// parameter and read using the same properties (not normalized for brightness).
+	#[serde(rename = "xy")]
+	XY,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ColorModesInvalidity {
+	OnOffWithOthers,
+	BrightnessWithOthers,
+	WhiteWithoutColorModes,
+}
+
+pub struct ColorModeSetValidator<'a>(&'a EnumSet<ColorMode>);
+
+impl<'a> semval::Validate for ColorModeSetValidator<'a> {
+	type Invalidity = ColorModesInvalidity;
+
+	fn validate(&self) -> semval::ValidationResult<Self::Invalidity> {
+		let value = *self.0;
+
+		semval::context::Context::new()
+			.invalidate_if(
+				value.contains(ColorMode::OnOff) && value != ColorMode::OnOff,
+				ColorModesInvalidity::OnOffWithOthers,
+			)
+			.invalidate_if(
+				value.contains(ColorMode::Brightness) && value != ColorMode::Brightness,
+				ColorModesInvalidity::BrightnessWithOthers,
+			)
+			.invalidate_if(
+				value.contains(ColorMode::White)
+					&& value.is_disjoint(
+						ColorMode::HueSaturation
+							| ColorMode::RedGreenBlue
+							| ColorMode::RedGreenBlueWhite
+							| ColorMode::RedGreenBlueWhiteWarmWhite
+							| ColorMode::XY,
+					),
+				ColorModesInvalidity::WhiteWithoutColorModes,
+			)
+			.into_result()
+	}
 }

@@ -11,8 +11,11 @@ impl<'a> ToTokens for InvalidityEnum<'a> {
 		let vis = &self.0.vis;
 		let ident = &self.0.invalidity_ident;
 		let variants = self.0.fields.iter().filter_map(|f| {
-			f.validate.then(|| {
-				let ty = f.ty.make_lifetimes_static();
+			f.validate.then(|p| {
+				let ty = p.map(|p| quote!(#p<'static>)).unwrap_or_else(|| {
+					let ty = f.ty.make_lifetimes_static();
+					quote!(#ty)
+				});
 				let variant_ident = &f.variant_ident;
 				quote! {
 					#variant_ident(<#ty as ::semval::Validate>::Invalidity)
