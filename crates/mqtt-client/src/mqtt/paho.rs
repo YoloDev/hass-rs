@@ -297,6 +297,7 @@ pub(crate) async fn create_client(
 		.server_uris(&hosts)
 		.automatic_reconnect(Duration::from_secs(5), Duration::from_secs(60 * 5));
 
+	#[cfg(feature = "tls")]
 	if options.tls {
 		builder.ssl_options(paho_mqtt::SslOptions::new());
 	}

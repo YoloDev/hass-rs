@@ -18,7 +18,7 @@ error-stack = { version = "0.2", features = ["spantrace"] }
 flume = "0.10"
 futures = "0.3"
 generational-arena = "0.2"
-paho-mqtt = { version = "0.11", optional = true }
+paho-mqtt = { version = "0.11", default-features = false, optional = true }
 pin-project = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -28,9 +28,15 @@ thiserror = "1"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
 
+#[target.'cfg(not(target_env = "msvc"))'.dependencies]
+#paho-mqtt = { version = "0.11", default-features = false, optional = true }
+
 [features]
-default = ["paho"]
+default = ["tls", "paho", "paho-bundled"]
 paho = ["paho-mqtt"]
+paho-bundled = ["paho-mqtt?/bundled"]
+paho-mqtt = ["dep:paho-mqtt"]
+tls = ["paho-mqtt?/ssl"]
 
 [package.metadata.docs.rs]
 all-features = true
