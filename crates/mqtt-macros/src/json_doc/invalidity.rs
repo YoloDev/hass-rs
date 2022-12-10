@@ -1,10 +1,10 @@
-use super::EntityStruct;
+use super::DocumentStruct;
 use crate::util::ModifyLifetimes;
 use darling::ToTokens;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-struct InvalidityEnum<'a>(&'a EntityStruct);
+struct InvalidityEnum<'a>(&'a DocumentStruct);
 
 impl<'a> ToTokens for InvalidityEnum<'a> {
 	fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -41,6 +41,6 @@ impl<'a> ToTokens for InvalidityEnum<'a> {
 	}
 }
 
-pub(super) fn invalidity_enum(entity: &EntityStruct) -> impl ToTokens + '_ {
-	InvalidityEnum(entity)
+pub(super) fn invalidity_enum(doc: &DocumentStruct) -> impl ToTokens + '_ {
+	InvalidityEnum(doc)
 }

@@ -1,9 +1,76 @@
 use proc_macro2::Span;
-use std::borrow::Cow;
+use std::{borrow::Cow, mem};
 use syn::{
 	Constraint, GenericArgument, Lifetime, Path, PathArguments, PathSegment, QSelf, Type, TypeArray,
 	TypeGroup, TypeParamBound, TypeParen, TypePath, TypeReference, TypeSlice, TypeTuple,
 };
+
+pub(crate) trait Prepend {
+	fn prepend(&mut self, items: Self);
+}
+
+impl Prepend for syn::FieldsNamed {
+	fn prepend(&mut self, items: Self) {
+		let mut items = items.named;
+		mem::swap(&mut self.named, &mut items);
+
+		if !items.is_empty() {
+			if let Some(l) = self.named.last_mut() {
+				if l.colon_token.is_none() {
+					l.colon_token = Some(<syn::Token!(:)>::default());
+				}
+			}
+		}
+
+		self.named.extend(items);
+	}
+}
+
+// impl<T> Prepend for Vec<T> {
+// 	fn prepend(&mut self, mut items: Self) {
+// 		mem::swap(self, &mut items);
+// 		self.append(&mut items);
+// 	}
+// }
+
+pub(crate) trait PathExt {
+	fn match_path(&self, segments: &[&str]) -> Option<&PathArguments>;
+	fn as_option(&self) -> Option<&Type>;
+}
+
+impl PathExt for Path {
+	fn match_path<'a>(self: &'a Path, segments: &[&str]) -> Option<&'a PathArguments> {
+		if self.segments.len() == 1 && self.segments[0].ident == segments.last().unwrap() {
+			Some(&self.segments[0].arguments)
+		} else if self.leading_colon.is_some()
+			&& self.segments.len() == segments.len()
+			&& self
+				.segments
+				.iter()
+				.zip(segments)
+				.all(|(a, b)| a.ident == b)
+		{
+			Some(&self.segments.last().unwrap().arguments)
+		} else {
+			None
+		}
+	}
+
+	fn as_option(self: &Path) -> Option<&Type> {
+		self
+			.match_path(&["std", "option", "Option"])
+			.and_then(|args| {
+				if let PathArguments::AngleBracketed(args) = args {
+					if args.args.len() == 1 {
+						if let syn::GenericArgument::Type(t) = &args.args[0] {
+							return Some(t);
+						}
+					}
+				}
+				None
+			})
+	}
+}
 
 pub(crate) trait ModifyLifetimes: Clone {
 	fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self>;

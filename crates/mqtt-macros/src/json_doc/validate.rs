@@ -1,9 +1,9 @@
-use super::EntityStruct;
+use super::DocumentStruct;
 use darling::ToTokens;
 use proc_macro2::{Span, TokenStream};
 use quote::{format_ident, quote};
 
-struct ValidationImpl<'a>(&'a EntityStruct);
+struct ValidationImpl<'a>(&'a DocumentStruct);
 
 impl<'a> ToTokens for ValidationImpl<'a> {
 	fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -48,6 +48,6 @@ impl<'a> ToTokens for ValidationImpl<'a> {
 	}
 }
 
-pub(super) fn validation(entity: &EntityStruct) -> impl ToTokens + '_ {
-	ValidationImpl(entity)
+pub(super) fn validation(doc: &DocumentStruct) -> impl ToTokens + '_ {
+	ValidationImpl(doc)
 }
