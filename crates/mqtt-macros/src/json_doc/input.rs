@@ -1,7 +1,8 @@
 use darling::{ast::Data, error::Accumulator, Error, FromDeriveInput, FromField, FromMeta};
 use proc_macro2::Span;
+use quote::format_ident;
 use std::collections::BTreeMap;
-use syn::{spanned::Spanned, Meta, MetaList, NestedMeta};
+use syn::{spanned::Spanned, Meta, MetaList, MetaNameValue, NestedMeta};
 
 #[derive(FromDeriveInput, Debug)]
 #[darling(attributes(entity, state), supports(struct_named), forward_attrs)]
@@ -25,11 +26,74 @@ pub(super) struct DocumentFieldInput {
 	pub ty: syn::Type,
 	pub attrs: Vec<syn::Attribute>,
 	pub validate: FieldValidation,
+	pub builder: Builder,
 	pub vis: syn::Visibility,
 }
 
 #[derive(Debug)]
-pub enum FieldValidation {
+pub(super) struct Builder {
+	pub enabled: bool,
+	pub rename: Option<syn::Ident>,
+	span: Option<Span>,
+}
+
+impl Default for Builder {
+	fn default() -> Self {
+		Builder {
+			enabled: true,
+			rename: None,
+			span: None,
+		}
+	}
+}
+
+impl Spanned for Builder {
+	fn span(&self) -> Span {
+		self.span.unwrap_or_else(Span::call_site)
+	}
+}
+
+impl FromMeta for Builder {
+	fn from_none() -> Option<Self> {
+		Some(Builder::default())
+	}
+
+	fn from_meta(mi: &syn::Meta) -> darling::Result<Self> {
+		match mi {
+			syn::Meta::Path(_) => Ok(Builder {
+				span: Some(mi.span()),
+				..Default::default()
+			}),
+
+			syn::Meta::NameValue(MetaNameValue {
+				lit: syn::Lit::Bool(b),
+				..
+			}) => Ok(Builder {
+				enabled: b.value,
+				span: Some(mi.span()),
+				..Default::default()
+			}),
+
+			syn::Meta::NameValue(MetaNameValue {
+				lit: syn::Lit::Str(s),
+				..
+			}) => Ok(Builder {
+				enabled: true,
+				rename: Some(format_ident!("{}", s.value(), span = s.span())),
+				span: Some(mi.span()),
+			}),
+
+			_ => {
+				// The implementation for () will produce an error for all non-path meta items;
+				// call it to make sure the span behaviors and error messages are the same.
+				Err(<()>::from_meta(mi).unwrap_err())
+			}
+		}
+	}
+}
+
+#[derive(Debug)]
+pub(super) enum FieldValidation {
 	None,
 	Default(Option<Span>),
 	With(Span, syn::Path),
@@ -52,6 +116,16 @@ impl FromMeta for FieldValidation {
 				// call it to make sure the span behaviors and error messages are the same.
 				Err(<()>::from_meta(mi).unwrap_err())
 			}
+		}
+	}
+}
+
+impl Spanned for FieldValidation {
+	fn span(&self) -> Span {
+		match self {
+			Self::None => Span::call_site(),
+			Self::Default(span) => span.unwrap_or_else(Span::call_site),
+			Self::With(span, _) => *span,
 		}
 	}
 }

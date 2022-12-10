@@ -23,7 +23,7 @@ impl EntityTopic {
 			self.client.clone(),
 			self.topics.domain.clone(),
 			self.topics.entity_id.clone(),
-			self.topics.state_topic(name),
+			self.topics.state_topic(name).into(),
 		)
 	}
 }
@@ -87,7 +87,7 @@ pub struct StateTopic {
 	client: HassMqttClient,
 	domain: Arc<str>,
 	entity_id: Arc<str>,
-	topic: String,
+	topic: Arc<str>,
 }
 
 impl StateTopic {
@@ -95,7 +95,7 @@ impl StateTopic {
 		client: HassMqttClient,
 		domain: Arc<str>,
 		entity_id: Arc<str>,
-		topic: String,
+		topic: Arc<str>,
 	) -> Self {
 		StateTopic {
 			client,
@@ -103,6 +103,10 @@ impl StateTopic {
 			entity_id,
 			topic,
 		}
+	}
+
+	pub fn topic(&self) -> Arc<str> {
+		self.topic.clone()
 	}
 
 	pub async fn publish(

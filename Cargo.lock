@@ -634,6 +634,7 @@ name = "mqtt-light"
 version = "0.0.0"
 dependencies = [
  "error-stack",
+ "futures",
  "hass-mqtt-client",
  "hass-mqtt-types",
  "serde_json",

@@ -7,12 +7,12 @@ mod invalidity;
 mod serde;
 mod validate;
 
+use self::input::{AdditionalInvalidities, AdditionalProps};
+use crate::args::Args;
 use convert_case::{Case, Casing};
 use darling::{error::Accumulator, usage::GenericsExt, Error, FromDeriveInput, Result};
 use proc_macro2::Span;
 use quote::{format_ident, ToTokens};
-
-use self::input::{AdditionalInvalidities, AdditionalProps};
 
 pub(crate) struct DocumentStruct {
 	ident: syn::Ident,
@@ -27,8 +27,8 @@ pub(crate) struct DocumentStruct {
 }
 
 impl DocumentStruct {
-	pub(crate) fn document_struct(&self) -> impl ToTokens + '_ {
-		document::document_struct(self)
+	pub(crate) fn document_struct<'a>(&'a self, args: &'a Args) -> impl ToTokens + 'a {
+		document::document_struct(self, args)
 	}
 
 	pub(crate) fn ctor(&self) -> impl ToTokens + '_ {
@@ -70,14 +70,14 @@ impl TryFrom<input::DocumentStructInput> for DocumentStruct {
 					has_a = true;
 				} else {
 					accumulator.push(
-						Error::custom("Entities must only have a single lifetime named 'a")
+						Error::custom("Documents must only have a single lifetime named 'a")
 							.with_span(&lifetime.ident),
 					);
 				}
 			}
 
 			if !has_a {
-				let error = Error::custom("Entities must have a lifetime 'a");
+				let error = Error::custom("Documents must have a lifetime 'a");
 				let error = if first {
 					error.with_span(&value.ident)
 				} else {
@@ -89,11 +89,11 @@ impl TryFrom<input::DocumentStructInput> for DocumentStruct {
 
 		let fields = match value.data.take_struct() {
 			None => {
-				accumulator.push(Error::custom("Entities must be structs").with_span(&value.ident));
+				accumulator.push(Error::custom("Documents must be structs").with_span(&value.ident));
 				Vec::new()
 			}
 			Some(data) if !data.is_struct() => {
-				accumulator.push(Error::custom("Entities must be structs").with_span(&value.ident));
+				accumulator.push(Error::custom("Documents must be structs").with_span(&value.ident));
 				Vec::new()
 			}
 			Some(data) => {
@@ -136,6 +136,7 @@ pub(crate) struct DocumentField {
 	docs: Vec<syn::Attribute>,
 	attrs: Vec<syn::Attribute>,
 	validate: FieldValidation,
+	builder: Builder,
 	required: bool,
 }
 
@@ -164,6 +165,21 @@ impl From<input::FieldValidation> for FieldValidation {
 	}
 }
 
+#[derive(Debug)]
+struct Builder {
+	pub enabled: bool,
+	pub rename: Option<syn::Ident>,
+}
+
+impl From<input::Builder> for Builder {
+	fn from(value: input::Builder) -> Self {
+		Builder {
+			enabled: value.enabled,
+			rename: value.rename,
+		}
+	}
+}
+
 impl TryFrom<input::DocumentFieldInput> for DocumentField {
 	type Error = darling::Error;
 
@@ -172,13 +188,13 @@ impl TryFrom<input::DocumentFieldInput> for DocumentField {
 		let ident = match value.ident {
 			Some(ident) => ident,
 			None => {
-				accumulator.push(Error::custom("Entity fields must be named"));
+				accumulator.push(Error::custom("Document fields must be named"));
 				syn::Ident::new("unknown", proc_macro2::Span::call_site())
 			}
 		};
 
 		if !matches!(value.vis, syn::Visibility::Public(_)) {
-			accumulator.push(Error::custom("Entity fields must be public").with_span(&ident));
+			accumulator.push(Error::custom("Document fields must be public").with_span(&ident));
 		}
 
 		let ty = value.ty;
@@ -187,6 +203,7 @@ impl TryFrom<input::DocumentFieldInput> for DocumentField {
 			.into_iter()
 			.partition(|attr| attr.path.is_ident("doc"));
 		let validate = value.validate.into();
+		let builder = value.builder.into();
 		let has_default = attrs
 			.iter()
 			.any(|attr| attr.path.is_ident("serde") && attr.tokens.to_string().contains("default"));
@@ -208,6 +225,7 @@ impl TryFrom<input::DocumentFieldInput> for DocumentField {
 			attrs,
 			docs,
 			validate,
+			builder,
 			required,
 		})
 	}

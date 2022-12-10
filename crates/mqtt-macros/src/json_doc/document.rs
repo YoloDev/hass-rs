@@ -1,9 +1,10 @@
 use super::DocumentStruct;
+use crate::args::Args;
 use darling::ToTokens;
 use proc_macro2::TokenStream;
 use quote::quote;
 
-struct Document<'a>(&'a DocumentStruct);
+struct Document<'a>(&'a DocumentStruct, &'a Args);
 
 impl<'a> ToTokens for Document<'a> {
 	fn to_tokens(&self, tokens: &mut TokenStream) {
@@ -24,10 +25,20 @@ impl<'a> ToTokens for Document<'a> {
 			}
 		});
 
+		let mut derives = vec![
+			quote!(Debug),
+			quote!(Clone),
+			quote!(PartialEq),
+			quote!(::serde::Deserialize),
+		];
+		if self.1.impl_eq {
+			derives.push(quote!(Eq));
+		}
+
 		tokens.extend(quote! {
 			#(#docs)*
 			#(#attrs)*
-			#[derive(Debug, Clone, PartialEq, Eq, ::serde::Deserialize)]
+			#[derive(#(#derives,)*)]
 			#vis struct #ident #generics {
 				#(#fields,)*
 			}
@@ -35,6 +46,6 @@ impl<'a> ToTokens for Document<'a> {
 	}
 }
 
-pub(super) fn document_struct(doc: &DocumentStruct) -> impl ToTokens + '_ {
-	Document(doc)
+pub(super) fn document_struct<'a>(doc: &'a DocumentStruct, args: &'a Args) -> impl ToTokens + 'a {
+	Document(doc, args)
 }

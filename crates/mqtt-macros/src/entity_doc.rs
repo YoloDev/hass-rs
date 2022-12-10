@@ -1,4 +1,4 @@
-use crate::{json_doc::DocumentStruct, util::Prepend};
+use crate::{args::Args, json_doc::DocumentStruct, util::Prepend};
 use darling::FromDeriveInput;
 use proc_macro2::TokenStream;
 use quote::{quote, ToTokens};
@@ -104,19 +104,21 @@ impl FromDeriveInput for EntityStruct {
 	}
 }
 
-impl ToTokens for EntityStruct {
-	fn to_tokens(&self, tokens: &mut TokenStream) {
-		self.0.document_struct().to_tokens(tokens);
-		self.0.ctor().to_tokens(tokens);
-		self.0.builders().to_tokens(tokens);
-		self.0.invalidity_enum().to_tokens(tokens);
-		self.0.validate().to_tokens(tokens);
-		self.0.serde().to_tokens(tokens);
+impl EntityStruct {
+	fn into_token_stream(self, args: Args) -> TokenStream {
+		let mut tokens = TokenStream::new();
+		self.0.document_struct(&args).to_tokens(&mut tokens);
+		self.0.ctor().to_tokens(&mut tokens);
+		self.0.builders().to_tokens(&mut tokens);
+		self.0.invalidity_enum().to_tokens(&mut tokens);
+		self.0.validate().to_tokens(&mut tokens);
+		self.0.serde().to_tokens(&mut tokens);
+		tokens
 	}
 }
 
-pub fn create(input: TokenStream) -> darling::Result<TokenStream> {
+pub fn create(input: TokenStream, args: Args) -> darling::Result<TokenStream> {
 	let parsed: syn::DeriveInput = parse2(input)?;
-	let entity = EntityStruct::from_derive_input(&parsed)?;
-	Ok(entity.into_token_stream())
+	let doc = EntityStruct::from_derive_input(&parsed)?;
+	Ok(doc.into_token_stream(args))
 }

@@ -41,14 +41,18 @@ impl<'a> ToTokens for Builders<'a> {
 		let generics = &self.0.generics;
 		let ident = &self.0.ident;
 
-		let builders = self.0.fields.iter().map(|f| {
-			let ident = format_ident!("{}", &f.ident, span = Span::call_site());
+		let builders = self.0.fields.iter().filter(|f| f.builder.enabled).map(|f| {
+			let ident = f
+				.builder
+				.rename
+				.clone()
+				.unwrap_or_else(|| format_ident!("{}", &f.ident, span = Span::call_site()));
 			let docs = &f.docs;
 			let ty = &f.ty;
 			match ty {
 				syn::Type::Path(p) => {
 					if let Some(inner) = as_option(&p.path) {
-						let unset_ident = format_ident!("unset_{}", ident);
+						let unset_ident = format_ident!("unset_{}", ident, span = Span::call_site());
 						quote! {
 							#(#docs)*
 							pub fn #ident(mut self, #ident: impl ::std::convert::Into< #inner >) -> Self {

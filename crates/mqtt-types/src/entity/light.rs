@@ -1,6 +1,7 @@
 use crate::{topic::Topic, validation::Validator};
 use enumset::{EnumSet, EnumSetType};
-use hass_mqtt_macros::entity_document;
+use hass_mqtt_macros::{entity_document, state_document};
+use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
 /// The mqtt light platform lets you control your MQTT enabled lights.
@@ -211,5 +212,204 @@ impl Validator<EnumSet<ColorMode>> for ColorModeSetValidator {
 					),
 				ColorModesInvalidity::WhiteWithoutColorModes,
 			)
+	}
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
+pub enum OnOff {
+	#[serde(rename = "ON")]
+	On,
+
+	#[serde(rename = "OFF")]
+	Off,
+}
+
+impl OnOff {
+	pub fn is_on(&self) -> bool {
+		matches!(self, Self::On)
+	}
+
+	pub fn is_off(&self) -> bool {
+		matches!(self, Self::Off)
+	}
+}
+
+impl From<bool> for OnOff {
+	fn from(value: bool) -> Self {
+		match value {
+			true => Self::On,
+			false => Self::Off,
+		}
+	}
+}
+
+#[state_document(?Eq)]
+pub struct LightState<'a> {
+	/// Return the brightness of this light, by default between 0..255.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub brightness: Option<u16>,
+
+	/// The [ColorMode] of the light.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub color_mode: Option<ColorMode>,
+
+	/// The current color of the light.
+	#[state(builder = false)]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub color: Option<ColorState>,
+
+	/// Current light effect.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub effect: Option<Cow<'a, str>>,
+
+	/// Current light state.
+	pub state: OnOff,
+
+	/// Current light transition.
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	pub transition: Option<u16>,
+}
+
+impl<'a> LightState<'a> {
+	pub fn color_white(&mut self, white: u8) -> &mut Self {
+		self.color_mode = Some(ColorMode::White);
+		self
+			.color
+			.get_or_insert_with(ColorState::default)
+			.white(white);
+		self
+	}
+
+	pub fn color_rgb(&mut self, red: u8, green: u8, blue: u8) -> &mut Self {
+		self.color_mode = Some(ColorMode::RedGreenBlue);
+		self
+			.color
+			.get_or_insert_with(ColorState::default)
+			.red(red)
+			.green(green)
+			.blue(blue);
+		self
+	}
+
+	pub fn color_rgbw(&mut self, red: u8, green: u8, blue: u8, white: u8) -> &mut Self {
+		self.color_mode = Some(ColorMode::RedGreenBlueWhite);
+		self
+			.color
+			.get_or_insert_with(ColorState::default)
+			.red(red)
+			.green(green)
+			.blue(blue)
+			.white(white);
+		self
+	}
+
+	pub fn color_rgbww(
+		&mut self,
+		red: u8,
+		green: u8,
+		blue: u8,
+		cold_white: u8,
+		warm_white: u8,
+	) -> &mut Self {
+		self.color_mode = Some(ColorMode::RedGreenBlueWhiteWarmWhite);
+		self
+			.color
+			.get_or_insert_with(ColorState::default)
+			.red(red)
+			.green(green)
+			.blue(blue)
+			.cold_white(cold_white)
+			.warm_white(warm_white);
+		self
+	}
+
+	pub fn color_xy(&mut self, x: f32, y: f32) -> &mut Self {
+		self.color_mode = Some(ColorMode::XY);
+		self.color.get_or_insert_with(ColorState::default).x(x).y(y);
+		self
+	}
+
+	pub fn color_hs(&mut self, hue: f32, saturation: f32) -> &mut Self {
+		self.color_mode = Some(ColorMode::HueSaturation);
+		self
+			.color
+			.get_or_insert_with(ColorState::default)
+			.hue(hue)
+			.saturation(saturation);
+		self
+	}
+}
+
+#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ColorState {
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	red: Option<u8>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	green: Option<u8>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	blue: Option<u8>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	cold_white: Option<u8>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	white: Option<u8>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	x: Option<f32>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	y: Option<f32>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	hue: Option<f32>,
+	#[serde(default, skip_serializing_if = "Option::is_none")]
+	saturation: Option<f32>,
+}
+
+impl ColorState {
+	pub fn red(&mut self, value: u8) -> &mut Self {
+		self.red = Some(value);
+		self
+	}
+
+	pub fn green(&mut self, value: u8) -> &mut Self {
+		self.green = Some(value);
+		self
+	}
+
+	pub fn blue(&mut self, value: u8) -> &mut Self {
+		self.blue = Some(value);
+		self
+	}
+
+	pub fn cold_white(&mut self, value: u8) -> &mut Self {
+		self.cold_white = Some(value);
+		self
+	}
+
+	pub fn white(&mut self, value: u8) -> &mut Self {
+		self.white = Some(value);
+		self
+	}
+
+	pub fn warm_white(&mut self, value: u8) -> &mut Self {
+		self.white = Some(value);
+		self
+	}
+
+	pub fn x(&mut self, value: f32) -> &mut Self {
+		self.x = Some(value);
+		self
+	}
+
+	pub fn y(&mut self, value: f32) -> &mut Self {
+		self.y = Some(value);
+		self
+	}
+
+	pub fn hue(&mut self, value: f32) -> &mut Self {
+		self.hue = Some(value);
+		self
+	}
+
+	pub fn saturation(&mut self, value: f32) -> &mut Self {
+		self.saturation = Some(value);
+		self
 	}
 }
