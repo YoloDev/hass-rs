@@ -12,13 +12,14 @@ impl<'a> ToTokens for InvalidityEnum<'a> {
 		let ident = &self.0.invalidity_ident;
 		let variants = self.0.fields.iter().filter_map(|f| {
 			f.validate.then(|p| {
-				let ty = p.map(|p| quote!(#p<'static>)).unwrap_or_else(|| {
-					let ty = f.ty.make_lifetimes_static();
-					quote!(#ty)
-				});
+				let ty = f.ty.make_lifetimes_static();
 				let variant_ident = &f.variant_ident;
-				quote! {
-					#variant_ident(<#ty as ::semval::Validate>::Invalidity)
+
+				match p {
+					None => quote! { #variant_ident(<#ty as ::semval::Validate>::Invalidity) },
+					Some(p) => {
+						quote! { #variant_ident(<#p as crate::validation::Validator<#ty>>::Invalidity) }
+					}
 				}
 			})
 		});

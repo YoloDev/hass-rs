@@ -1,4 +1,4 @@
-use crate::{topic::Topic, validation::CustomValidation};
+use crate::{topic::Topic, validation::Validator};
 use enumset::{EnumSet, EnumSetType};
 use hass_mqtt_discovery_macros::entity_document;
 use std::borrow::Cow;
@@ -83,15 +83,16 @@ pub struct Light<'a> {
 	pub white_value_scale: Option<u8>,
 }
 
-impl<'a> CustomValidation for Light<'a> {
+impl<'a> Validator for Light<'a> {
 	type Invalidity = LightInvalidity;
 
-	fn additional_validation(
+	fn validate_value(
 		&self,
+		value: &Self,
 		context: semval::context::Context<Self::Invalidity>,
 	) -> semval::context::Context<Self::Invalidity> {
 		context.invalidate_if(
-			self.color_mode == Some(true) && self.supported_color_modes.is_empty(),
+			value.color_mode == Some(true) && value.supported_color_modes.is_empty(),
 			LightInvalidity::ColorModeWithoutSupportedColorModes,
 		)
 	}
@@ -179,15 +180,18 @@ pub enum ColorModesInvalidity {
 	WhiteWithoutColorModes,
 }
 
-pub struct ColorModeSetValidator<'a>(&'a EnumSet<ColorMode>);
+pub struct ColorModeSetValidator;
 
-impl<'a> semval::Validate for ColorModeSetValidator<'a> {
+impl Validator<EnumSet<ColorMode>> for ColorModeSetValidator {
 	type Invalidity = ColorModesInvalidity;
 
-	fn validate(&self) -> semval::ValidationResult<Self::Invalidity> {
-		let value = *self.0;
-
-		semval::context::Context::new()
+	fn validate_value(
+		&self,
+		value: &EnumSet<ColorMode>,
+		context: semval::context::Context<ColorModesInvalidity>,
+	) -> semval::context::Context<ColorModesInvalidity> {
+		let value = *value;
+		context
 			.invalidate_if(
 				value.contains(ColorMode::OnOff) && value != ColorMode::OnOff,
 				ColorModesInvalidity::OnOffWithOthers,
@@ -207,6 +211,5 @@ impl<'a> semval::Validate for ColorModeSetValidator<'a> {
 					),
 				ColorModesInvalidity::WhiteWithoutColorModes,
 			)
-			.into_result()
 	}
 }

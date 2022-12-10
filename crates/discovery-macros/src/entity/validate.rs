@@ -16,14 +16,18 @@ impl<'a> ToTokens for ValidationImpl<'a> {
 				let ident = format_ident!("{}", &f.ident, span = Span::call_site());
 				let variant_ident = &f.variant_ident;
 				let field = quote!(&self.#ident);
-				let field = p.map(|p| quote!(&#p(#field))).unwrap_or(field);
-				quote! { .validate_with(#field, #invalidity_ident::#variant_ident) }
+				match p {
+					None => quote! { .validate_with(#field, #invalidity_ident::#variant_ident) },
+					Some(p) => {
+						quote! { .validate_using_with(&#p, #field, #invalidity_ident::#variant_ident) }
+					}
+				}
 			})
 		});
 
 		let extra_validation = match self.0.additional_invalidities.as_ref() {
 			None => quote! {},
-			Some(_) => quote! { .validate_entity(self) },
+			Some(_) => quote! { .validate_using(self, self) },
 		};
 
 		tokens.extend(quote! {

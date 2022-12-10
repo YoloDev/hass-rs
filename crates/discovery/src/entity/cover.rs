@@ -1,6 +1,6 @@
 use crate::{
 	device_class::DeviceClass, payload::Payload, template::Template, topic::Topic,
-	validation::CustomValidation,
+	validation::Validator,
 };
 use hass_mqtt_discovery_macros::entity_document;
 
@@ -218,37 +218,38 @@ pub struct Cover<'a> {
 	pub value_template: Option<Template<'a>>,
 }
 
-impl<'a> CustomValidation for Cover<'a> {
+impl<'a> Validator for Cover<'a> {
 	type Invalidity = CoverInvalidity;
 
-	fn additional_validation(
+	fn validate_value(
 		&self,
+		value: &Self,
 		context: semval::context::Context<Self::Invalidity>,
 	) -> semval::context::Context<Self::Invalidity> {
 		// https://github.com/home-assistant/core/blob/6cfb40f080279a45c8e630419742cc2f3faedecb/homeassistant/components/mqtt/cover.py#L116
 		context
 			.invalidate_if(
-				self.value_template.is_some() && self.state_topic.is_none(),
+				value.value_template.is_some() && value.state_topic.is_none(),
 				CoverInvalidity::StateTopicMissing,
 			)
 			.invalidate_if(
-				self.set_position_topic.is_some() && self.position_topic.is_none(),
+				value.set_position_topic.is_some() && value.position_topic.is_none(),
 				CoverInvalidity::PositionTopicMissing,
 			)
 			.invalidate_if(
-				self.position_template.is_some() && self.position_topic.is_none(),
+				value.position_template.is_some() && value.position_topic.is_none(),
 				CoverInvalidity::PositionTopicMissing,
 			)
 			.invalidate_if(
-				self.set_position_template.is_some() && self.set_position_topic.is_none(),
+				value.set_position_template.is_some() && value.set_position_topic.is_none(),
 				CoverInvalidity::SetPositionTopicMissing,
 			)
 			.invalidate_if(
-				self.tilt_command_template.is_some() && self.tilt_command_topic.is_none(),
+				value.tilt_command_template.is_some() && value.tilt_command_topic.is_none(),
 				CoverInvalidity::TiltCommandTopicMissing,
 			)
 			.invalidate_if(
-				self.tilt_status_template.is_some() && self.tilt_status_topic.is_none(),
+				value.tilt_status_template.is_some() && value.tilt_status_topic.is_none(),
 				CoverInvalidity::TiltStatusTopicMissing,
 			)
 	}

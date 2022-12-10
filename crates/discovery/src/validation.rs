@@ -13,11 +13,12 @@ impl<I: Invalidity + Send + Sync> fmt::Display for ValidationError<I> {
 
 impl<I: Invalidity + Send + Sync> Context for ValidationError<I> {}
 
-pub(crate) trait CustomValidation {
+pub trait Validator<T = Self> {
 	type Invalidity: Invalidity;
 
-	fn additional_validation(
+	fn validate_value(
 		&self,
+		value: &T,
 		context: semval::context::Context<Self::Invalidity>,
 	) -> semval::context::Context<Self::Invalidity>;
 }
@@ -39,10 +40,18 @@ pub(crate) trait ValidateContextExt {
 		I: IntoIterator<Item = &'a II>,
 		II: Validate<Invalidity = U>;
 
-	fn validate_entity(
+	fn validate_using<U, T>(self, validator: &impl Validator<T, Invalidity = U>, value: &T) -> Self
+	where
+		U: Invalidity + Into<Self::Invalidity>;
+
+	fn validate_using_with<U, T>(
 		self,
-		custom_validatable: &impl CustomValidation<Invalidity = Self::Invalidity>,
-	) -> Self;
+		validator: &impl Validator<T, Invalidity = U>,
+		value: &T,
+		map: impl Fn(U) -> Self::Invalidity,
+	) -> Self
+	where
+		U: Invalidity;
 }
 
 impl<V: Invalidity> ValidateContextExt for semval::context::Context<V> {
@@ -77,10 +86,41 @@ impl<V: Invalidity> ValidateContextExt for semval::context::Context<V> {
 	}
 
 	#[inline]
-	fn validate_entity(
+	fn validate_using<U, T>(self, validator: &impl Validator<T, Invalidity = U>, value: &T) -> Self
+	where
+		U: Invalidity + Into<Self::Invalidity>,
+	{
+		self.validate(&Using(validator, value))
+	}
+
+	#[inline]
+	fn validate_using_with<U, T>(
 		self,
-		custom_validatable: &impl CustomValidation<Invalidity = Self::Invalidity>,
-	) -> Self {
-		custom_validatable.additional_validation(self)
+		validator: &impl Validator<T, Invalidity = U>,
+		value: &T,
+		map: impl Fn(U) -> Self::Invalidity,
+	) -> Self
+	where
+		U: Invalidity,
+	{
+		self.validate_with(&Using(validator, value), map)
+	}
+}
+
+struct Using<'a, T, U>(&'a U, &'a T)
+where
+	U: Validator<T>;
+
+impl<'a, T, U> Validate for Using<'a, T, U>
+where
+	U: Validator<T>,
+{
+	type Invalidity = U::Invalidity;
+
+	fn validate(&self) -> semval::ValidationResult<Self::Invalidity> {
+		self
+			.0
+			.validate_value(self.1, semval::context::Context::new())
+			.into_result()
 	}
 }
