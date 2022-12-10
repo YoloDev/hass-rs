@@ -493,23 +493,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "hass-mqtt-discovery"
-version = "0.2.0"
-dependencies = [
- "assert_matches",
- "enumset",
- "error-stack",
- "hass-mqtt-discovery-macros",
- "nameof",
- "semval",
- "serde",
- "serde_json",
- "serde_repr",
- "serde_test",
-]
-
-[[package]]
-name = "hass-mqtt-discovery-macros"
+name = "hass-mqtt-macros"
 version = "0.0.0"
 dependencies = [
  "convert_case",
@@ -518,6 +502,22 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "hass-mqtt-types"
+version = "0.2.0"
+dependencies = [
+ "assert_matches",
+ "enumset",
+ "error-stack",
+ "hass-mqtt-macros",
+ "nameof",
+ "semval",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "serde_test",
 ]
 
 [[package]]
@@ -635,7 +635,7 @@ version = "0.0.0"
 dependencies = [
  "error-stack",
  "hass-mqtt-client",
- "hass-mqtt-discovery",
+ "hass-mqtt-types",
  "serde_json",
  "thiserror",
  "tokio",

@@ -1,6 +1,6 @@
 use crate::{topic::Topic, validation::Validator};
 use enumset::{EnumSet, EnumSetType};
-use hass_mqtt_discovery_macros::entity_document;
+use hass_mqtt_macros::entity_document;
 use std::borrow::Cow;
 
 /// The mqtt light platform lets you control your MQTT enabled lights.

@@ -1,6 +1,6 @@
 use error_stack::{IntoReport, ResultExt};
 use hass_mqtt_client::{HassMqttOptions, MqttQosLevel};
-use hass_mqtt_discovery::Light;
+use hass_mqtt_types::Light;
 use thiserror::Error;
 
 #[derive(Debug, Error)]

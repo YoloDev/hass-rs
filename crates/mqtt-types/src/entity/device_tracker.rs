@@ -2,7 +2,7 @@ use crate::{
 	device_tracker_source_type::DeviceTrackerSourceType, payload::Payload, template::Template,
 	topic::Topic,
 };
-use hass_mqtt_discovery_macros::entity_document;
+use hass_mqtt_macros::entity_document;
 
 /// The mqtt device tracker platform allows you to automatically discover device_trackers
 /// using the MQTT Discovery protocol.

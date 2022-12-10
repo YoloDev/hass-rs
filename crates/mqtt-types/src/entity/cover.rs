@@ -2,7 +2,7 @@ use crate::{
 	device_class::DeviceClass, payload::Payload, template::Template, topic::Topic,
 	validation::Validator,
 };
-use hass_mqtt_discovery_macros::entity_document;
+use hass_mqtt_macros::entity_document;
 
 /// The mqtt cover platform allows you to control an MQTT cover (such as blinds, a roller shutter or a garage door).
 ///

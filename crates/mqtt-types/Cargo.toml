@@ -1,5 +1,5 @@
 [package]
-name = "hass-mqtt-discovery"
+name = "hass-mqtt-types"
 version = "0.2.0"
 edition = "2021"
 description = "home-assistant MQTT discovery types"
@@ -17,7 +17,7 @@ semval = { version = "0.5" }
 serde = { version = "1", features = ["derive"] }
 serde_repr = "0.1"
 
-hass-mqtt-discovery-macros = { version = "0.0.0", path = "../discovery-macros" }
+hass-mqtt-macros = { version = "0.0.0", path = "../mqtt-macros" }
 
 [dev-dependencies]
 assert_matches = "1"

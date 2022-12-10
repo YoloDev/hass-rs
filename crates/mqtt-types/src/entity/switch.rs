@@ -1,5 +1,5 @@
 use crate::{device_class::DeviceClass, payload::Payload, template::Template, topic::Topic};
-use hass_mqtt_discovery_macros::entity_document;
+use hass_mqtt_macros::entity_document;
 
 /// The mqtt switch platform lets you control your MQTT enabled switches.
 ///

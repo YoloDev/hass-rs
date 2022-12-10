@@ -1,5 +1,5 @@
 use crate::{device_class::DeviceClass, state_class::StateClass, template::Template, topic::Topic};
-use hass_mqtt_discovery_macros::entity_document;
+use hass_mqtt_macros::entity_document;
 use std::{borrow::Cow, num::NonZeroU32};
 
 /// This mqtt sensor platform uses the MQTT message payload as the sensor value.

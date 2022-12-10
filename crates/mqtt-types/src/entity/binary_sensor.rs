@@ -1,5 +1,5 @@
 use crate::{device_class::DeviceClass, payload::Payload, template::Template, topic::Topic};
-use hass_mqtt_discovery_macros::entity_document;
+use hass_mqtt_macros::entity_document;
 use std::num::NonZeroU32;
 
 /// The mqtt binary sensor platform uses an MQTT message received to set the binary sensor’s

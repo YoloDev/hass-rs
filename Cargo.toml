@@ -1,9 +1,9 @@
 [workspace]
 members = [
-	"crates/discovery",
-	"crates/discovery-macros",
-	"crates/entity-state",
+	"crates/mqtt-types",
+	"crates/mqtt-macros",
 	"crates/mqtt-client",
+	"crates/entity-state",
 
 	# examples
 	"examples/mqtt-light",
