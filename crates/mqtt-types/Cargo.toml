@@ -11,11 +11,12 @@ repository = "https://github.com/YoloDev/hass-rs"
 
 [dependencies]
 enumset = { version = "1", features = ["serde"] }
-error-stack = "0.2"
 nameof = "1"
 semval = { version = "0.5" }
 serde = { version = "1", features = ["derive"] }
 serde_repr = "0.1"
+thiserror = "1"
+tracing-error = "0.2"
 
 hass-mqtt-macros = { version = "0.0.0", path = "../mqtt-macros" }
 

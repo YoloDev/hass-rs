@@ -102,13 +102,13 @@ impl TopicsConfig {
 
 	pub(crate) fn online_message<T: MqttMessage>(
 		&self,
-	) -> error_stack::Result<T, <<T as MqttMessage>::Builder as MqttMessageBuilder>::Error> {
+	) -> Result<T, <<T as MqttMessage>::Builder as MqttMessageBuilder>::Error> {
 		availability_message(&self.available(), Self::ONLINE_PLAYLOAD)
 	}
 
 	pub(crate) fn offline_message<T: MqttMessage>(
 		&self,
-	) -> error_stack::Result<T, <<T as MqttMessage>::Builder as MqttMessageBuilder>::Error> {
+	) -> Result<T, <<T as MqttMessage>::Builder as MqttMessageBuilder>::Error> {
 		availability_message(&self.available(), Self::OFFLINE_PLAYLOAD)
 	}
 }
@@ -150,11 +150,11 @@ impl EntityTopicsConfig {
 fn availability_message<T: MqttMessage>(
 	topic: &str,
 	content: &str,
-) -> error_stack::Result<T, <<T as MqttMessage>::Builder as MqttMessageBuilder>::Error> {
+) -> Result<T, <<T as MqttMessage>::Builder as MqttMessageBuilder>::Error> {
 	T::builder()
 		.topic(topic)
 		.payload(content)
-		.qos(crate::MqttQosLevel::ExactlyOnce)
+		.qos(crate::QosLevel::ExactlyOnce)
 		.retain(true)
 		.build()
 }

@@ -1,3 +1,5 @@
+#![cfg_attr(provide_any, feature(provide_any))]
+
 pub(crate) mod document;
 pub(crate) mod string_wrappers;
 pub(crate) mod validation;
@@ -48,3 +50,6 @@ pub use unique_id::UniqueId;
 
 #[doc(inline)]
 pub use document::Document;
+
+#[doc(inline)]
+pub use validation::ValidationError;

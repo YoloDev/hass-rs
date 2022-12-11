@@ -1,11 +1,11 @@
 use crate::{
 	client::{command::Command, subscription::Subscriptions, Message},
+	error::DynError,
 	mqtt::{HassMqttConnection, MqttClient, MqttMessage, MqttProvider, MqttProviderExt},
 	router::Router,
 	topics::TopicsConfig,
 	HassMqttOptions,
 };
-use error_stack::{report, IntoReport, ResultExt};
 use futures::{pin_mut, StreamExt};
 use std::{thread, time::Duration};
 use thiserror::Error;
@@ -13,16 +13,45 @@ use tokio::select;
 
 type RouteId = generational_arena::Index;
 
-#[derive(Clone, Debug, Error)]
+#[derive(Debug, Error)]
 pub enum ConnectError {
 	#[error("failed to connect to MQTT broker")]
-	Connect,
+	Connect {
+		#[cfg_attr(provide_any, backtrace)]
+		source: DynError,
+	},
 
 	#[error("falied to spawn MQTT thread")]
-	SpawnThread,
+	SpawnThread {
+		#[cfg_attr(provide_any, backtrace)]
+		source: DynError,
+	},
 
 	#[error("failed to create async MQTT runtime")]
-	CreateRuntime,
+	CreateRuntime {
+		#[cfg_attr(provide_any, backtrace)]
+		source: DynError,
+	},
+}
+
+impl ConnectError {
+	fn connect(source: impl std::error::Error + Send + Sync + 'static) -> Self {
+		Self::Connect {
+			source: DynError::new(source),
+		}
+	}
+
+	fn spawn_thread(source: impl std::error::Error + Send + Sync + 'static) -> Self {
+		Self::SpawnThread {
+			source: DynError::new(source),
+		}
+	}
+
+	fn create_runtime(source: impl std::error::Error + Send + Sync + 'static) -> Self {
+		Self::CreateRuntime {
+			source: DynError::new(source),
+		}
+	}
 }
 
 pub(super) struct InnerClient {
@@ -98,7 +127,7 @@ impl InnerClient {
 
 	pub(super) async fn spawn<P: MqttProvider>(
 		options: HassMqttOptions,
-	) -> error_stack::Result<flume::Sender<Command>, ConnectError> {
+	) -> Result<flume::Sender<Command>, ConnectError> {
 		let (result_sender, result_receiver) = tokio::sync::oneshot::channel();
 
 		thread::Builder::new()
@@ -107,8 +136,7 @@ impl InnerClient {
 				let (sender, receiver) = flume::unbounded();
 				let rt = match tokio::runtime::Builder::new_current_thread()
 					.build()
-					.into_report()
-					.change_context(ConnectError::CreateRuntime)
+					.map_err(ConnectError::create_runtime)
 				{
 					Ok(rt) => rt,
 					Err(e) => {
@@ -124,7 +152,7 @@ impl InnerClient {
 						client: mqtt_client,
 					} = match <P as MqttProviderExt>::create_client(&options)
 						.await
-						.change_context(ConnectError::Connect)
+						.map_err(ConnectError::connect)
 					{
 						Ok(c) => c,
 						Err(e) => {
@@ -142,13 +170,12 @@ impl InnerClient {
 				// ensure it lives til this point
 				drop(guard);
 			})
-			.into_report()
-			.change_context(ConnectError::SpawnThread)?;
+			.map_err(ConnectError::spawn_thread)?;
 
 		match result_receiver.await {
 			Ok(Ok(sender)) => Ok(sender),
 			Ok(Err(e)) => Err(e),
-			Err(e) => Err(report!(e).change_context(ConnectError::Connect)),
+			Err(e) => Err(ConnectError::connect(e)),
 		}
 	}
 }

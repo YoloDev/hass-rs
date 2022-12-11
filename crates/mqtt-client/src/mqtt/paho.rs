@@ -1,13 +1,13 @@
 use crate::{
+	error::DynError,
 	options::MqttPersistence,
 	topics::{ApplicationName, NodeId, TopicsConfig},
-	MqttQosLevel,
+	QosLevel,
 };
 
 use super::{sealed, MqttClient, MqttMessage, MqttMessageBuilder, MqttProvider};
 use async_trait::async_trait;
 use dirs::{cache_dir, state_dir};
-use error_stack::{IntoReport, ResultExt};
 use futures::{stream::FusedStream, Stream};
 use paho_mqtt::{AsyncClient, AsyncReceiver, Message};
 use pin_project::pin_project;
@@ -35,36 +35,86 @@ pub struct PahoStream {
 	inner: AsyncReceiver<Option<Message>>,
 }
 
-#[derive(Debug, Clone, Error)]
+#[non_exhaustive]
+#[derive(Debug, Error)]
 pub enum PahoProviderConnectError {
 	#[error("failed to create MQTT client")]
-	Client,
+	Client {
+		#[cfg_attr(provide_any, backtrace)]
+		source: DynError,
+	},
 
 	#[error("failed to connect to MQTT broker")]
-	Connect,
+	Connect {
+		#[cfg_attr(provide_any, backtrace)]
+		source: DynError,
+	},
 
 	#[error("faild to find state or cache directory")]
 	StateDir,
 
 	#[error("falied to resolve host: {host}:{port}")]
-	ResolveHost { host: String, port: u16 },
+	ResolveHost {
+		host: String,
+		port: u16,
+		#[cfg_attr(provide_any, backtrace)]
+		source: DynError,
+	},
 
 	#[error("failed to create MQTT message: {kind}")]
-	Message { kind: String },
+	Message {
+		kind: String,
+		#[cfg_attr(provide_any, backtrace)]
+		source: DynError,
+	},
 }
 
 impl PahoProviderConnectError {
-	fn resolve_host(host: &str, port: u16) -> Self {
-		PahoProviderConnectError::ResolveHost {
+	fn client(source: impl std::error::Error + Send + Sync + 'static) -> Self {
+		Self::Client {
+			source: DynError::new(source),
+		}
+	}
+
+	fn connect(source: impl std::error::Error + Send + Sync + 'static) -> Self {
+		Self::Connect {
+			source: DynError::new(source),
+		}
+	}
+
+	fn state_dir() -> Self {
+		Self::StateDir
+	}
+
+	fn resolve_host(
+		host: impl Into<String>,
+		port: u16,
+		source: impl std::error::Error + Send + Sync + 'static,
+	) -> Self {
+		Self::ResolveHost {
 			host: host.into(),
 			port,
+			source: DynError::new(source),
+		}
+	}
+
+	fn message(
+		kind: impl Into<String>,
+		source: impl std::error::Error + Send + Sync + 'static,
+	) -> Self {
+		Self::Message {
+			kind: kind.into(),
+			source: DynError::new(source),
 		}
 	}
 }
 
-impl super::MqttProviderCreateError for PahoProviderConnectError {
-	fn create_message(kind: impl Into<String>) -> Self {
-		Self::Message { kind: kind.into() }
+impl<E> super::MqttProviderCreateError<E> for PahoProviderConnectError
+where
+	E: std::error::Error + Send + Sync + 'static,
+{
+	fn create_message(kind: impl Into<String>, source: E) -> Self {
+		Self::message(kind, source)
 	}
 }
 
@@ -83,7 +133,7 @@ impl MqttProvider for PahoMqtt {
 		_topics: &TopicsConfig,
 		online_message: Self::Message,
 		offline_message: Self::Message,
-	) -> error_stack::Result<Self::Client, Self::Error> {
+	) -> Result<Self::Client, Self::Error> {
 		create_client(
 			options,
 			client_id,
@@ -107,40 +157,27 @@ impl MqttClient for PahoClient {
 	type UnsubscribeError = paho_mqtt::Error;
 	type DisconnectError = paho_mqtt::Error;
 
-	async fn publish(&self, message: Message) -> error_stack::Result<(), Self::PublishError> {
-		self.client.publish(message).await.into_report()
+	async fn publish(&self, message: Message) -> Result<(), Self::PublishError> {
+		self.client.publish(message).await
 	}
 
 	async fn subscribe(
 		&self,
 		topic: impl Into<String>,
-		qos: MqttQosLevel,
-	) -> error_stack::Result<(), Self::SubscribeError> {
-		self
-			.client
-			.subscribe(topic, qos.into())
-			.await
-			.into_report()
-			.map(|_| ())
+		qos: QosLevel,
+	) -> Result<(), Self::SubscribeError> {
+		self.client.subscribe(topic, qos.into()).await.map(|_| ())
 	}
 
-	async fn unsubscribe(
-		&self,
-		topic: impl Into<String>,
-	) -> error_stack::Result<(), Self::UnsubscribeError> {
-		self
-			.client
-			.unsubscribe(topic)
-			.await
-			.into_report()
-			.map(|_| ())
+	async fn unsubscribe(&self, topic: impl Into<String>) -> Result<(), Self::UnsubscribeError> {
+		self.client.unsubscribe(topic).await.map(|_| ())
 	}
 
 	async fn disconnect(
 		&self,
 		timeout: std::time::Duration,
 		publish_last_will: bool,
-	) -> error_stack::Result<(), Self::DisconnectError> {
+	) -> Result<(), Self::DisconnectError> {
 		let mut builder = paho_mqtt::DisconnectOptionsBuilder::new();
 		builder.timeout(timeout);
 		if publish_last_will {
@@ -149,7 +186,6 @@ impl MqttClient for PahoClient {
 
 		AsyncClient::disconnect(&self.client, builder.finalize())
 			.await
-			.into_report()
 			.map(|_| ())
 	}
 
@@ -192,13 +228,13 @@ impl MqttMessageBuilder for paho_mqtt::MessageBuilder {
 		paho_mqtt::MessageBuilder::payload(self, payload)
 	}
 
-	fn qos(self, qos: crate::MqttQosLevel) -> Self {
+	fn qos(self, qos: crate::QosLevel) -> Self {
 		paho_mqtt::MessageBuilder::qos(
 			self,
 			match qos {
-				crate::MqttQosLevel::AtMostOnce => paho_mqtt::QOS_0,
-				crate::MqttQosLevel::AtLeastOnce => paho_mqtt::QOS_1,
-				crate::MqttQosLevel::ExactlyOnce => paho_mqtt::QOS_2,
+				crate::QosLevel::AtMostOnce => paho_mqtt::QOS_0,
+				crate::QosLevel::AtLeastOnce => paho_mqtt::QOS_1,
+				crate::QosLevel::ExactlyOnce => paho_mqtt::QOS_2,
 			},
 		)
 	}
@@ -207,7 +243,7 @@ impl MqttMessageBuilder for paho_mqtt::MessageBuilder {
 		paho_mqtt::MessageBuilder::retained(self, retain)
 	}
 
-	fn build(self) -> error_stack::Result<Self::Message, Self::Error> {
+	fn build(self) -> Result<Self::Message, Self::Error> {
 		Ok(self.finalize())
 	}
 }
@@ -246,7 +282,7 @@ fn as_create_options(
 	client_id: &str,
 	application_name: &ApplicationName,
 	node_id: &NodeId,
-) -> error_stack::Result<paho_mqtt::CreateOptions, PahoProviderConnectError> {
+) -> Result<paho_mqtt::CreateOptions, PahoProviderConnectError> {
 	let builder = paho_mqtt::CreateOptionsBuilder::new()
 		.client_id(client_id)
 		.send_while_disconnected(true);
@@ -255,7 +291,7 @@ fn as_create_options(
 		MqttPersistence::Default => state_dir()
 			.or_else(cache_dir)
 			.map(|dir| join_persistence_file(&dir, application_name, node_id))
-			.ok_or(PahoProviderConnectError::StateDir)?,
+			.ok_or_else(PahoProviderConnectError::state_dir)?,
 		MqttPersistence::File(d) => d.clone(),
 		MqttPersistence::Directory(d) => join_persistence_file(d, application_name, node_id),
 	};
@@ -272,24 +308,19 @@ pub(crate) async fn create_client(
 	node_id: &NodeId,
 	online_message: paho_mqtt::Message,
 	offline_message: paho_mqtt::Message,
-) -> error_stack::Result<PahoClient, PahoProviderConnectError> {
+) -> Result<PahoClient, PahoProviderConnectError> {
 	let mut client = paho_mqtt::AsyncClient::new(as_create_options(
 		options,
 		client_id,
 		application_name,
 		node_id,
 	)?)
-	.into_report()
-	.change_context(PahoProviderConnectError::Client)?;
+	.map_err(PahoProviderConnectError::client)?;
 
 	let mut builder = paho_mqtt::ConnectOptionsBuilder::new();
 	let hosts = lookup_host((&*options.host, options.port))
 		.await
-		.into_report()
-		.change_context(PahoProviderConnectError::resolve_host(
-			&options.host,
-			options.port,
-		))?
+		.map_err(|source| PahoProviderConnectError::resolve_host(&options.host, options.port, source))?
 		.map(|addr| format!("tcp://{addr}"))
 		.collect::<Vec<_>>();
 
@@ -326,8 +357,7 @@ pub(crate) async fn create_client(
 	client
 		.connect(builder.finalize())
 		.await
-		.into_report()
-		.change_context(PahoProviderConnectError::Connect)?;
+		.map_err(PahoProviderConnectError::connect)?;
 
 	Ok(PahoClient { client, messages })
 }

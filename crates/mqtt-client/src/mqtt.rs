@@ -1,9 +1,8 @@
 use crate::{
 	topics::{ApplicationName, NodeId, TopicsConfig},
-	MqttQosLevel,
+	QosLevel,
 };
 use async_trait::async_trait;
-use error_stack::ResultExt;
 use futures::stream::Stream;
 
 #[cfg(feature = "paho")]
@@ -18,15 +17,20 @@ mod sealed {
 	pub trait Sealed {}
 }
 
-pub trait MqttProviderCreateError: std::error::Error + Send + Sync + 'static {
-	fn create_message(kind: impl Into<String>) -> Self;
+pub trait MqttProviderCreateError<E>: std::error::Error + Send + Sync + 'static
+where
+	E: std::error::Error + Send + Sync + 'static,
+{
+	fn create_message(kind: impl Into<String>, source: E) -> Self;
 }
 
 #[async_trait(?Send)]
 pub trait MqttProvider: sealed::Sealed {
 	type Client: MqttClient<Message = Self::Message>;
 	type Message: MqttMessage;
-	type Error: MqttProviderCreateError;
+	type Error: MqttProviderCreateError<
+		<<Self::Message as MqttMessage>::Builder as MqttMessageBuilder>::Error,
+	>;
 
 	#[allow(clippy::too_many_arguments)]
 	async fn create(
@@ -37,7 +41,7 @@ pub trait MqttProvider: sealed::Sealed {
 		topics: &TopicsConfig,
 		online_message: Self::Message,
 		offline_message: Self::Message,
-	) -> error_stack::Result<Self::Client, Self::Error>;
+	) -> Result<Self::Client, Self::Error>;
 }
 
 pub(crate) struct HassMqttConnection<T>
@@ -52,7 +56,7 @@ where
 pub(crate) trait MqttProviderExt: MqttProvider {
 	async fn create_client(
 		options: &crate::HassMqttOptions,
-	) -> error_stack::Result<HassMqttConnection<Self::Client>, Self::Error> {
+	) -> Result<HassMqttConnection<Self::Client>, Self::Error> {
 		let node_id = NodeId::new(&*options.node_id);
 		let client_id = format!("{}_{}", options.application_name.slug(), options.node_id);
 		let topics = TopicsConfig::new(
@@ -65,10 +69,10 @@ pub(crate) trait MqttProviderExt: MqttProvider {
 		);
 		let online_message = topics
 			.online_message()
-			.change_context(Self::Error::create_message("online"))?;
+			.map_err(|e| Self::Error::create_message("online", e))?;
 		let offline_message = topics
 			.offline_message()
-			.change_context(Self::Error::create_message("offline"))?;
+			.map_err(|e| Self::Error::create_message("offline", e))?;
 
 		let client = Self::create(
 			&options.mqtt,
@@ -98,24 +102,21 @@ pub trait MqttClient: sealed::Sealed {
 
 	fn messages(&self) -> Self::Messages;
 
-	async fn publish(&self, message: Self::Message) -> error_stack::Result<(), Self::PublishError>;
+	async fn publish(&self, message: Self::Message) -> Result<(), Self::PublishError>;
 
 	async fn subscribe(
 		&self,
 		topic: impl Into<String>,
-		qos: MqttQosLevel,
-	) -> error_stack::Result<(), Self::SubscribeError>;
+		qos: QosLevel,
+	) -> Result<(), Self::SubscribeError>;
 
-	async fn unsubscribe(
-		&self,
-		topic: impl Into<String>,
-	) -> error_stack::Result<(), Self::UnsubscribeError>;
+	async fn unsubscribe(&self, topic: impl Into<String>) -> Result<(), Self::UnsubscribeError>;
 
 	async fn disconnect(
 		&self,
 		timeout: std::time::Duration,
 		publish_last_will: bool,
-	) -> error_stack::Result<(), Self::DisconnectError>;
+	) -> Result<(), Self::DisconnectError>;
 }
 
 pub trait MqttMessage: sealed::Sealed + Clone {
@@ -128,11 +129,11 @@ pub trait MqttMessage: sealed::Sealed + Clone {
 }
 pub trait MqttMessageBuilder: sealed::Sealed {
 	type Message: MqttMessage;
-	type Error: std::error::Error;
+	type Error: std::error::Error + Send + Sync + 'static;
 
 	fn topic(self, topic: impl Into<String>) -> Self;
 	fn payload(self, payload: impl Into<Vec<u8>>) -> Self;
-	fn qos(self, qos: MqttQosLevel) -> Self;
+	fn qos(self, qos: QosLevel) -> Self;
 	fn retain(self, retain: bool) -> Self;
-	fn build(self) -> error_stack::Result<Self::Message, Self::Error>;
+	fn build(self) -> Result<Self::Message, Self::Error>;
 }

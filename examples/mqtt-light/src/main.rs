@@ -1,6 +1,6 @@
 use error_stack::{IntoReport, ResultExt};
 use futures::StreamExt;
-use hass_mqtt_client::{HassMqttOptions, Message, MqttQosLevel};
+use hass_mqtt_client::{HassMqttOptions, Message, QosLevel};
 use hass_mqtt_types::{entity::LightState, Light};
 use std::time::Duration;
 use thiserror::Error;
@@ -39,18 +39,21 @@ async fn main() -> error_stack::Result<(), ApplicationError> {
 	let client = HassMqttOptions::new("localhost", "mqtt-light")
 		.build_paho()
 		.await
+		.into_report()
 		.change_context(ApplicationError::CreateClient)?;
 
 	println!("creating entity");
 	let light_entity = client
 		.entity("light", "mqtt_light")
 		.await
+		.into_report()
 		.change_context(ApplicationError::CreateEntity)?;
 
 	println!("creating command topic");
 	let mut command_topic = light_entity
-		.command_topic("set", MqttQosLevel::AtLeastOnce)
+		.command_topic("set", QosLevel::AtLeastOnce)
 		.await
+		.into_report()
 		.change_context(ApplicationError::CommandTopic)?;
 	let command_topic_name = command_topic.topic();
 
@@ -68,8 +71,9 @@ async fn main() -> error_stack::Result<(), ApplicationError> {
 
 	println!("publishing discovery document");
 	light_entity
-		.publish(light_discovery_document, true, MqttQosLevel::AtLeastOnce)
+		.publish(light_discovery_document, true, QosLevel::AtLeastOnce)
 		.await
+		.into_report()
 		.change_context(ApplicationError::PublishDiscoveryDocument)?;
 
 	let mut on = false;
@@ -82,8 +86,9 @@ async fn main() -> error_stack::Result<(), ApplicationError> {
 
 		println!("publishing state document");
 		state_topic
-			.publish(state_doc, true, MqttQosLevel::AtLeastOnce)
+			.publish(state_doc, true, QosLevel::AtLeastOnce)
 			.await
+			.into_report()
 			.change_context(ApplicationError::PublishStateDocument)?;
 
 		select! {

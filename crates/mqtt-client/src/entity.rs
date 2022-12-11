@@ -1,8 +1,8 @@
 use crate::{
-	client::{HassMqttClient, Message, MqttQosLevel, Subscription},
+	client::{HassMqttClient, Message, QosLevel, Subscription},
+	error::DynError,
 	topics::EntityTopicsConfig,
 };
-use error_stack::ResultExt;
 use futures::Stream;
 use pin_project::pin_project;
 use std::sync::Arc;
@@ -33,6 +33,8 @@ impl EntityTopic {
 pub struct EntityPublishError {
 	domain: Arc<str>,
 	entity_id: Arc<str>,
+	#[cfg_attr(provide_any, backtrace)]
+	source: DynError,
 }
 
 impl EntityTopic {
@@ -40,16 +42,17 @@ impl EntityTopic {
 		&self,
 		payload: impl Into<Arc<[u8]>>,
 		retained: bool,
-		qos: MqttQosLevel,
-	) -> error_stack::Result<(), EntityPublishError> {
+		qos: QosLevel,
+	) -> Result<(), EntityPublishError> {
 		let topic = self.topics.discovery_topic();
 		self
 			.client
 			.publish_message(topic, payload, retained, qos)
 			.await
-			.change_context_lazy(|| EntityPublishError {
+			.map_err(|source| EntityPublishError {
 				domain: self.topics.domain.clone(),
 				entity_id: self.topics.entity_id.clone(),
+				source: DynError::new(source),
 			})
 	}
 }
@@ -60,23 +63,26 @@ pub struct EntitySubscribeError {
 	name: Arc<str>,
 	domain: Arc<str>,
 	entity_id: Arc<str>,
+	#[cfg_attr(provide_any, backtrace)]
+	source: DynError,
 }
 
 impl EntityTopic {
 	pub async fn command_topic(
 		&self,
 		name: &str,
-		qos: MqttQosLevel,
-	) -> error_stack::Result<CommandTopic, EntitySubscribeError> {
+		qos: QosLevel,
+	) -> Result<CommandTopic, EntitySubscribeError> {
 		let topic = self.topics.command_topic(name);
 		let subscription = self
 			.client
 			.subscribe(topic.clone(), qos)
 			.await
-			.change_context_lazy(|| EntitySubscribeError {
+			.map_err(|source| EntitySubscribeError {
 				name: name.into(),
 				domain: self.topics.domain.clone(),
 				entity_id: self.topics.entity_id.clone(),
+				source: DynError::new(source),
 			})?;
 
 		Ok(CommandTopic::new(self.client.clone(), subscription))
@@ -113,15 +119,16 @@ impl StateTopic {
 		&self,
 		payload: impl Into<Arc<[u8]>>,
 		retained: bool,
-		qos: MqttQosLevel,
-	) -> error_stack::Result<(), EntityPublishError> {
+		qos: QosLevel,
+	) -> Result<(), EntityPublishError> {
 		self
 			.client
 			.publish_message(self.topic.clone(), payload, retained, qos)
 			.await
-			.change_context_lazy(|| EntityPublishError {
+			.map_err(|source| EntityPublishError {
 				domain: self.domain.clone(),
 				entity_id: self.entity_id.clone(),
+				source: DynError::new(source),
 			})
 	}
 }

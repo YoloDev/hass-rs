@@ -2,7 +2,7 @@ mod entity;
 mod publish;
 mod subscribe;
 
-use super::{inner::InnerClient, MqttQosLevel};
+use super::{inner::InnerClient, QosLevel};
 use crate::mqtt::MqttClient;
 use async_trait::async_trait;
 use std::sync::Arc;
@@ -21,13 +21,13 @@ pub(super) trait ClientCommand {
 		&self,
 		client: &mut InnerClient,
 		mqtt: &T,
-	) -> error_stack::Result<Self::Result, Self::Error>;
+	) -> Result<Self::Result, Self::Error>;
 
-	fn create_error(&self) -> Self::Error;
+	fn create_error(&self, source: impl std::error::Error + Send + Sync + 'static) -> Self::Error;
 }
 
 pub(super) type CommandResult<T> =
-	error_stack::Result<<T as ClientCommand>::Result, <T as ClientCommand>::Error>;
+	Result<<T as ClientCommand>::Result, <T as ClientCommand>::Error>;
 pub(super) type CommandResultSender<T> = oneshot::Sender<CommandResult<T>>;
 pub(super) type CommandResultReceiver<T> = oneshot::Receiver<CommandResult<T>>;
 
@@ -101,11 +101,11 @@ pub(super) fn publish(
 	topic: Arc<str>,
 	payload: Arc<[u8]>,
 	retained: bool,
-	qos: MqttQosLevel,
+	qos: QosLevel,
 ) -> PublishCommand {
 	PublishCommand::new(topic, payload, retained, qos)
 }
 
-pub(super) fn subscribe(topic: Arc<str>, qos: MqttQosLevel) -> SubscribeCommand {
+pub(super) fn subscribe(topic: Arc<str>, qos: QosLevel) -> SubscribeCommand {
 	SubscribeCommand::new(topic, qos)
 }

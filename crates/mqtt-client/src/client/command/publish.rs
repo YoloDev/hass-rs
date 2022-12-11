@@ -1,10 +1,10 @@
 use super::{ClientCommand, InnerClient};
 use crate::{
-	client::MqttQosLevel,
+	client::QosLevel,
+	error::DynError,
 	mqtt::{MqttClient, MqttMessage, MqttMessageBuilder},
 };
 use async_trait::async_trait;
-use error_stack::ResultExt;
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -12,11 +12,11 @@ pub(crate) struct PublishCommand {
 	topic: Arc<str>,
 	payload: Arc<[u8]>,
 	retained: bool,
-	qos: MqttQosLevel,
+	qos: QosLevel,
 }
 
 impl PublishCommand {
-	pub fn new(topic: Arc<str>, payload: Arc<[u8]>, retained: bool, qos: MqttQosLevel) -> Self {
+	pub fn new(topic: Arc<str>, payload: Arc<[u8]>, retained: bool, qos: QosLevel) -> Self {
 		Self {
 			topic,
 			payload,
@@ -31,7 +31,9 @@ impl PublishCommand {
 pub(crate) struct PublishCommandError {
 	topic: Arc<str>,
 	retained: bool,
-	qos: MqttQosLevel,
+	qos: QosLevel,
+	#[cfg_attr(provide_any, backtrace)]
+	source: DynError,
 }
 
 #[async_trait(?Send)]
@@ -43,26 +45,27 @@ impl ClientCommand for PublishCommand {
 		&self,
 		_client: &mut InnerClient,
 		mqtt: &T,
-	) -> error_stack::Result<Self::Result, Self::Error> {
+	) -> Result<Self::Result, Self::Error> {
 		let msg = <T::Message as MqttMessage>::builder()
 			.topic(&*self.topic)
 			.payload(&*self.payload)
 			.retain(self.retained)
 			.qos(self.qos)
 			.build()
-			.change_context_lazy(|| self.create_error())?;
+			.map_err(|source| self.create_error(source))?;
 
 		mqtt
 			.publish(msg)
 			.await
-			.change_context_lazy(|| self.create_error())
+			.map_err(|source| self.create_error(source))
 	}
 
-	fn create_error(&self) -> Self::Error {
+	fn create_error(&self, source: impl std::error::Error + Send + Sync + 'static) -> Self::Error {
 		PublishCommandError {
 			topic: self.topic.clone(),
 			retained: self.retained,
 			qos: self.qos,
+			source: DynError::new(source),
 		}
 	}
 }

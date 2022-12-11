@@ -1,5 +1,5 @@
 use super::{ClientCommand, InnerClient};
-use crate::{mqtt::MqttClient, topics::EntityTopicsConfig};
+use crate::{error::DynError, mqtt::MqttClient, topics::EntityTopicsConfig};
 use async_trait::async_trait;
 use std::sync::Arc;
 use thiserror::Error;
@@ -24,6 +24,8 @@ pub(crate) struct EntityCommandResult {
 pub(crate) struct EntityCommandError {
 	domain: Arc<str>,
 	entity_id: Arc<str>,
+	#[cfg_attr(provide_any, backtrace)]
+	source: DynError,
 }
 
 #[async_trait(?Send)]
@@ -35,7 +37,7 @@ impl ClientCommand for EntityCommand {
 		&self,
 		client: &mut InnerClient,
 		_mqtt: &T,
-	) -> error_stack::Result<Self::Result, Self::Error> {
+	) -> Result<Self::Result, Self::Error> {
 		let topics_config = client.topics.entity(&self.domain, &self.entity_id);
 
 		Ok(EntityCommandResult {
@@ -43,10 +45,11 @@ impl ClientCommand for EntityCommand {
 		})
 	}
 
-	fn create_error(&self) -> Self::Error {
+	fn create_error(&self, source: impl std::error::Error + Send + Sync + 'static) -> Self::Error {
 		EntityCommandError {
 			domain: self.domain.clone(),
 			entity_id: self.entity_id.clone(),
+			source: DynError::new(source),
 		}
 	}
 }

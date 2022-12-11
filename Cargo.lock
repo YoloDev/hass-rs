@@ -296,7 +296,6 @@ dependencies = [
  "anyhow",
  "owo-colors",
  "rustc_version",
- "tracing-error",
 ]
 
 [[package]]
@@ -477,7 +476,6 @@ dependencies = [
  "bytes",
  "color-eyre",
  "dirs",
- "error-stack",
  "flume",
  "futures",
  "generational-arena",
@@ -510,7 +508,6 @@ version = "0.2.0"
 dependencies = [
  "assert_matches",
  "enumset",
- "error-stack",
  "hass-mqtt-macros",
  "nameof",
  "semval",
@@ -518,6 +515,8 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "serde_test",
+ "thiserror",
+ "tracing-error",
 ]
 
 [[package]]

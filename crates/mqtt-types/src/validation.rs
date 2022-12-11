@@ -1,17 +1,65 @@
-use error_stack::Context;
 use semval::{Invalidity, Validate};
-use std::fmt;
+use std::{backtrace::Backtrace, fmt};
+use tracing_error::SpanTrace;
 
-#[derive(Debug, Clone)]
-pub struct ValidationError<I: Invalidity + Send + Sync>(I);
+#[cfg(provide_any)]
+use std::any::{Demand, Provider};
 
-impl<I: Invalidity + Send + Sync> fmt::Display for ValidationError<I> {
-	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-		write!(f, "validation error: {:?}", self.0)
+#[derive(Debug)]
+pub struct ValidationError<I: Invalidity + Send + Sync> {
+	invalidity: I,
+	backtrace: Backtrace,
+	spantrace: SpanTrace,
+}
+
+impl<I: Invalidity + Send + Sync> ValidationError<I> {
+	#[inline]
+	pub fn new(invalidity: I) -> Self {
+		Self {
+			invalidity,
+			backtrace: Backtrace::capture(),
+			spantrace: SpanTrace::capture(),
+		}
+	}
+
+	pub fn invalidity(&self) -> &I {
+		&self.invalidity
+	}
+
+	pub fn into_invalidity(self) -> I {
+		self.invalidity
+	}
+
+	pub fn backtrace(&self) -> &Backtrace {
+		&self.backtrace
+	}
+
+	pub fn spantrace(&self) -> &SpanTrace {
+		&self.spantrace
 	}
 }
 
-impl<I: Invalidity + Send + Sync> Context for ValidationError<I> {}
+impl<I: Invalidity + Send + Sync> From<I> for ValidationError<I> {
+	fn from(invalidity: I) -> Self {
+		Self::new(invalidity)
+	}
+}
+
+impl<I: Invalidity + Send + Sync> fmt::Display for ValidationError<I> {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		write!(f, "validation error: {:?}", &self.invalidity)
+	}
+}
+
+#[cfg(provide_any)]
+impl<I: Invalidity + Send + Sync> Provider for ValidationError<I> {
+	fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
+		demand
+			.provide_ref(&self.invalidity)
+			.provide_ref(&self.backtrace)
+			.provide_ref(&self.spantrace);
+	}
+}
 
 pub trait Validator<T = Self> {
 	type Invalidity: Invalidity;
