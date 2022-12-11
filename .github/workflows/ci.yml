@@ -25,6 +25,10 @@ jobs:
           - macos-latest
           # - windows-latest
           - ubuntu-latest
+        channel:
+          - stable
+          # - beta
+          - nightly
 
     steps:
       - name: Configure git
@@ -34,7 +38,9 @@ jobs:
           git config --global fetch.parallel 32
 
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.channel }}
       - uses: Swatinem/rust-cache@v2
 
       - name: Clippy
