@@ -31,6 +31,9 @@ hass-dyn-error = { version = "0.0.0", path = "../dyn-error" }
 hass-mqtt-provider = { version = "0.0.0", path = "../mqtt-provider" }
 hass-mqtt-provider-paho = { version = "0.0.0", path = "../mqtt-provider-paho", default-features = true, optional = true }
 
+[build-dependencies]
+hass-provide-any-probe = { version = "0.0.0", path = "../../build/provide-any-probe" }
+
 [features]
 default = ["tls", "paho", "paho-bundled"]
 paho = ["hass-mqtt-provider-paho"]

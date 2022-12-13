@@ -555,6 +555,9 @@ checksum = "9b919933a397b79c37e33b77bb2aa3dc8eb6e165ad809e58ff75bc7db2e34574"
 [[package]]
 name = "hass-dyn-error"
 version = "0.0.0"
+dependencies = [
+ "hass-provide-any-probe",
+]
 
 [[package]]
 name = "hass-entity-state"
@@ -582,6 +585,7 @@ dependencies = [
  "hass-dyn-error",
  "hass-mqtt-provider",
  "hass-mqtt-provider-paho",
+ "hass-provide-any-probe",
  "pin-project",
  "serde",
  "serde_json",
@@ -634,6 +638,7 @@ dependencies = [
  "assert_matches",
  "enumset",
  "hass-mqtt-macros",
+ "hass-provide-any-probe",
  "nameof",
  "semval",
  "serde",
@@ -643,6 +648,10 @@ dependencies = [
  "thiserror",
  "tracing-error",
 ]
+
+[[package]]
+name = "hass-provide-any-probe"
+version = "0.0.0"
 
 [[package]]
 name = "hermit-abi"
