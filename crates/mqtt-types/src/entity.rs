@@ -11,7 +11,7 @@ pub use button::{Button, ButtonInvalidity};
 pub use cover::{Cover, CoverInvalidity};
 pub use device_tracker::{DeviceTracker, DeviceTrackerInvalidity};
 pub use light::{
-	ColorMode, ColorModesInvalidity, ColorState, Light, LightInvalidity, LightState,
+	ColorMode, ColorModesInvalidity, Light, LightColorState, LightInvalidity, LightState,
 	LightStateInvalidity, OnOff,
 };
 pub use sensor::{Sensor, SensorInvalidity};

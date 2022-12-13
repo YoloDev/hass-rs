@@ -72,7 +72,7 @@ pub struct Light<'a> {
 	pub state_topic: Option<Topic<'a>>,
 
 	/// A list of color modes supported by the list. This is required if
-	/// [color_mode] is `true`.
+	/// [Self::color_mode] is `true`.
 	#[entity(validate = "ColorModeSetValidator")]
 	#[serde(default, skip_serializing_if = "EnumSet::is_empty")]
 	pub supported_color_modes: EnumSet<ColorMode>,
@@ -256,7 +256,7 @@ pub struct LightState<'a> {
 	/// The current color of the light.
 	#[state(builder = false)]
 	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub color: Option<ColorState>,
+	pub color: Option<LightColorState>,
 
 	/// Current light effect.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
@@ -275,7 +275,7 @@ impl<'a> LightState<'a> {
 		self.color_mode = Some(ColorMode::White);
 		self
 			.color
-			.get_or_insert_with(ColorState::default)
+			.get_or_insert_with(LightColorState::default)
 			.white(white);
 		self
 	}
@@ -284,7 +284,7 @@ impl<'a> LightState<'a> {
 		self.color_mode = Some(ColorMode::RedGreenBlue);
 		self
 			.color
-			.get_or_insert_with(ColorState::default)
+			.get_or_insert_with(LightColorState::default)
 			.red(red)
 			.green(green)
 			.blue(blue);
@@ -295,7 +295,7 @@ impl<'a> LightState<'a> {
 		self.color_mode = Some(ColorMode::RedGreenBlueWhite);
 		self
 			.color
-			.get_or_insert_with(ColorState::default)
+			.get_or_insert_with(LightColorState::default)
 			.red(red)
 			.green(green)
 			.blue(blue)
@@ -314,7 +314,7 @@ impl<'a> LightState<'a> {
 		self.color_mode = Some(ColorMode::RedGreenBlueWhiteWarmWhite);
 		self
 			.color
-			.get_or_insert_with(ColorState::default)
+			.get_or_insert_with(LightColorState::default)
 			.red(red)
 			.green(green)
 			.blue(blue)
@@ -325,7 +325,11 @@ impl<'a> LightState<'a> {
 
 	pub fn color_xy(&mut self, x: f32, y: f32) -> &mut Self {
 		self.color_mode = Some(ColorMode::XY);
-		self.color.get_or_insert_with(ColorState::default).x(x).y(y);
+		self
+			.color
+			.get_or_insert_with(LightColorState::default)
+			.x(x)
+			.y(y);
 		self
 	}
 
@@ -333,7 +337,7 @@ impl<'a> LightState<'a> {
 		self.color_mode = Some(ColorMode::HueSaturation);
 		self
 			.color
-			.get_or_insert_with(ColorState::default)
+			.get_or_insert_with(LightColorState::default)
 			.hue(hue)
 			.saturation(saturation);
 		self
@@ -341,7 +345,7 @@ impl<'a> LightState<'a> {
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
-pub struct ColorState {
+pub struct LightColorState {
 	#[serde(default, skip_serializing_if = "Option::is_none")]
 	red: Option<u8>,
 	#[serde(default, skip_serializing_if = "Option::is_none")]
@@ -362,7 +366,7 @@ pub struct ColorState {
 	saturation: Option<f32>,
 }
 
-impl ColorState {
+impl LightColorState {
 	pub fn red(&mut self, value: u8) -> &mut Self {
 		self.red = Some(value);
 		self
