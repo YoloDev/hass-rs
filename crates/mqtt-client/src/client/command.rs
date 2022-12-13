@@ -3,8 +3,8 @@ mod publish;
 mod subscribe;
 
 use super::{inner::InnerClient, QosLevel};
-use crate::mqtt::MqttClient;
 use async_trait::async_trait;
+use hass_mqtt_provider::MqttClient;
 use std::sync::Arc;
 use tokio::sync::oneshot;
 

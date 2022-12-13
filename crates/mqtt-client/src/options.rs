@@ -1,5 +1,14 @@
-use crate::topics::ApplicationName;
-use std::{path::PathBuf, sync::Arc};
+use crate::topics::{ApplicationName, NodeId};
+use dirs::{cache_dir, state_dir};
+use hass_dyn_error::DynError;
+use std::{
+	backtrace::Backtrace,
+	fmt,
+	path::{Path, PathBuf},
+	sync::Arc,
+};
+use thiserror::Error;
+use tracing_error::SpanTrace;
 
 #[derive(Clone)]
 pub struct HassMqttOptions {
@@ -7,7 +16,7 @@ pub struct HassMqttOptions {
 	pub(crate) discovery_prefix: String,
 	pub(crate) private_prefix: Option<String>,
 	pub(crate) application_name: ApplicationName,
-	pub(crate) node_id: String,
+	pub(crate) node_id: NodeId,
 }
 
 impl HassMqttOptions {
@@ -68,7 +77,7 @@ impl HassMqttOptions {
 	}
 
 	pub fn node_id(mut self, node_id: impl Into<String>) -> Self {
-		self.node_id = node_id.into();
+		self.node_id = NodeId::new(node_id.into());
 		self
 	}
 
@@ -83,11 +92,66 @@ impl HassMqttOptions {
 	}
 }
 
+#[derive(Debug)]
+pub struct MqttPersistenceError {
+	backtrace: Backtrace,
+	spantrace: SpanTrace,
+}
+
+impl MqttPersistenceError {
+	pub fn new() -> Self {
+		MqttPersistenceError {
+			backtrace: Backtrace::capture(),
+			spantrace: SpanTrace::capture(),
+		}
+	}
+}
+
+impl fmt::Display for MqttPersistenceError {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		f.write_str("failed to get state dir")
+	}
+}
+
+impl std::error::Error for MqttPersistenceError {
+	#[cfg(provide_any)]
+	fn provide<'a>(&'a self, demand: &mut std::any::Demand<'a>) {
+		demand
+			.provide_ref(&self.backtrace)
+			.provide_ref(&self.spantrace);
+	}
+}
+
 #[derive(Clone, Debug)]
 pub(crate) enum MqttPersistence {
 	Default,
 	Directory(PathBuf),
 	File(PathBuf),
+}
+
+impl MqttPersistence {
+	fn to_path(
+		&self,
+		application_name: &ApplicationName,
+		node_id: &NodeId,
+	) -> Result<PathBuf, MqttPersistenceError> {
+		fn join_persistence_file(
+			dir: &Path,
+			application_name: &ApplicationName,
+			node_id: &NodeId,
+		) -> PathBuf {
+			dir.join(format!("{}.{}.mqtt", application_name.slug(), node_id))
+		}
+
+		match self {
+			MqttPersistence::Default => state_dir()
+				.or_else(cache_dir)
+				.map(|dir| join_persistence_file(&dir, application_name, node_id))
+				.ok_or_else(MqttPersistenceError::new),
+			MqttPersistence::File(d) => Ok(d.clone()),
+			MqttPersistence::Directory(d) => Ok(join_persistence_file(d, application_name, node_id)),
+		}
+	}
 }
 
 #[derive(Clone)]
@@ -158,4 +222,43 @@ impl MqttOptions {
 pub(crate) struct MqttAuthOptions {
 	pub(crate) username: String,
 	pub(crate) password: String,
+}
+
+#[derive(Debug, Error)]
+#[error("failed to convert ot mqtt options")]
+pub struct MqttOptionsError {
+	#[cfg_attr(provide_any, backtrace)]
+	source: DynError,
+}
+
+impl MqttOptionsError {
+	pub(crate) fn new(source: impl std::error::Error + Send + Sync + 'static) -> Self {
+		MqttOptionsError {
+			source: DynError::new(source),
+		}
+	}
+}
+
+impl TryInto<hass_mqtt_provider::MqttOptions> for HassMqttOptions {
+	type Error = MqttOptionsError;
+
+	fn try_into(self) -> Result<hass_mqtt_provider::MqttOptions, Self::Error> {
+		let persistence = self
+			.mqtt
+			.persitence
+			.to_path(&self.application_name, &self.node_id)
+			.map_err(MqttOptionsError::new)?;
+
+		let mut options = hass_mqtt_provider::MqttOptions::new(self.mqtt.host, persistence);
+		options.port(self.mqtt.port);
+
+		#[cfg(feature = "tls")]
+		options.tls(self.mqtt.tls);
+
+		if let Some(auth) = self.mqtt.auth {
+			options.auth(auth.username, auth.password);
+		}
+
+		Ok(options)
+	}
 }

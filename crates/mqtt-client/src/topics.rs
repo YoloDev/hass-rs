@@ -1,4 +1,4 @@
-use crate::mqtt::{MqttMessage, MqttMessageBuilder};
+use hass_mqtt_provider::{MqttMessage, MqttMessageBuilder, QosLevel};
 use slug::slugify;
 use std::{fmt, sync::Arc};
 
@@ -14,6 +14,12 @@ impl NodeId {
 impl fmt::Display for NodeId {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		fmt::Display::fmt(&*self.0, f)
+	}
+}
+
+impl From<&str> for NodeId {
+	fn from(value: &str) -> Self {
+		NodeId::new(value)
 	}
 }
 
@@ -89,7 +95,7 @@ impl TopicsConfig {
 	}
 
 	fn entity_topic(&self, domain: &str, entity_id: &str, kind: &str, name: &str) -> String {
-		self.node_topic(format!("{}/{}/{}/{}", domain, entity_id, kind, name,))
+		self.node_topic(format!("{domain}/{entity_id}/{kind}/{name}"))
 	}
 
 	fn state_topic(&self, domain: &str, entity_id: &str, name: &str) -> String {
@@ -154,7 +160,7 @@ fn availability_message<T: MqttMessage>(
 	T::builder()
 		.topic(topic)
 		.payload(content)
-		.qos(crate::QosLevel::ExactlyOnce)
+		.qos(QosLevel::ExactlyOnce)
 		.retain(true)
 		.build()
 }

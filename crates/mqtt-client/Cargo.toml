@@ -17,7 +17,6 @@ dirs = "4"
 flume = "0.10"
 futures = "0.3"
 generational-arena = "0.2"
-paho-mqtt = { version = "0.11", default-features = false, optional = true }
 pin-project = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -26,16 +25,18 @@ static_assertions = "1"
 thiserror = "1"
 tokio = { version = "1", features = ["full"] }
 tracing = "0.1"
+tracing-error = "0.2"
 
-#[target.'cfg(not(target_env = "msvc"))'.dependencies]
-#paho-mqtt = { version = "0.11", default-features = false, optional = true }
+hass-dyn-error = { version = "0.0.0", path = "../dyn-error" }
+hass-mqtt-provider = { version = "0.0.0", path = "../mqtt-provider" }
+hass-mqtt-provider-paho = { version = "0.0.0", path = "../mqtt-provider-paho", default-features = true, optional = true }
 
 [features]
 default = ["tls", "paho", "paho-bundled"]
-paho = ["paho-mqtt"]
-paho-bundled = ["paho-mqtt?/bundled"]
-paho-mqtt = ["dep:paho-mqtt"]
-tls = ["paho-mqtt?/ssl"]
+paho = ["hass-mqtt-provider-paho"]
+paho-bundled = ["hass-mqtt-provider-paho?/bundled"]
+tls = ["hass-mqtt-provider-paho?/ssl"]
+tls-bundled = ["hass-mqtt-provider-paho?/vendored-ssl"]
 
 [package.metadata.docs.rs]
 all-features = true

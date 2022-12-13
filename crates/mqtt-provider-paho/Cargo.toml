@@ -1,0 +1,24 @@
+[package]
+name = "hass-mqtt-provider-paho"
+version = "0.0.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "0.1"
+futures = { version = "0.3", default-features = false }
+paho-mqtt = { version = "0.11", default-features = false }
+pin-project = "1"
+thiserror = "1"
+tokio = { version = "1", default-features = false }
+
+hass-dyn-error = { version = "0.0.0", path = "../dyn-error" }
+hass-mqtt-provider = { version = "0.0.0", path = "../mqtt-provider" }
+
+[features]
+default = ["bundled", "ssl"]
+bundled = ["paho-mqtt/bundled"]
+build_bindgen = ["paho-mqtt/build_bindgen"]
+ssl = ["paho-mqtt/ssl"]
+vendored-ssl = ["paho-mqtt/vendored-ssl"]

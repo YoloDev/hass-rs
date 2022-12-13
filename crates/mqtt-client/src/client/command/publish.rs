@@ -1,10 +1,7 @@
 use super::{ClientCommand, InnerClient};
-use crate::{
-	client::QosLevel,
-	error::DynError,
-	mqtt::{MqttClient, MqttMessage, MqttMessageBuilder},
-};
+use crate::{client::QosLevel, error::DynError};
 use async_trait::async_trait;
+use hass_mqtt_provider::{MqttClient, MqttMessage, MqttMessageBuilder};
 use std::sync::Arc;
 use thiserror::Error;
 

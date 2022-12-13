@@ -1,12 +1,13 @@
 use crate::{
 	client::{command::Command, subscription::Subscriptions, Message},
 	error::DynError,
-	mqtt::{HassMqttConnection, MqttClient, MqttMessage, MqttProvider, MqttProviderExt},
+	mqtt::{HassMqttConnection, MqttProviderExt},
 	router::Router,
 	topics::TopicsConfig,
 	HassMqttOptions,
 };
 use futures::{pin_mut, StreamExt};
+use hass_mqtt_provider::{MqttClient, MqttMessage, MqttProvider};
 use std::{thread, time::Duration};
 use thiserror::Error;
 use tokio::select;

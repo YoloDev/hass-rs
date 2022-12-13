@@ -1,9 +1,10 @@
 use crate::{
-	client::{HassMqttClient, Message, QosLevel, Subscription},
+	client::{HassMqttClient, Message, Subscription},
 	error::DynError,
 	topics::EntityTopicsConfig,
 };
 use futures::Stream;
+use hass_mqtt_provider::QosLevel;
 use pin_project::pin_project;
 use std::sync::Arc;
 use thiserror::Error;

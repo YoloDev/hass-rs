@@ -4,6 +4,9 @@ members = [
 	"crates/mqtt-macros",
 	"crates/mqtt-client",
 	"crates/entity-state",
+	"crates/mqtt-provider",
+	"crates/mqtt-provider-paho",
+	"crates/dyn-error",
 
 	# examples
 	"examples/mqtt-light",

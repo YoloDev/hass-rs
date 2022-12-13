@@ -12,5 +12,6 @@ mod tracking;
 pub mod error;
 pub mod mqtt;
 
-pub use client::{HassMqttClient, Message, QosLevel};
+pub use client::{HassMqttClient, Message};
+pub use hass_mqtt_provider::QosLevel;
 pub use options::HassMqttOptions;

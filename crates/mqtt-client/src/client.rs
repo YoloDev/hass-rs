@@ -3,8 +3,9 @@ mod inner;
 mod subscription;
 
 use self::{inner::InnerClient, subscription::SubscriptionToken};
-use crate::{entity::EntityTopic, error::DynError, mqtt, HassMqttOptions};
+use crate::{entity::EntityTopic, error::DynError, HassMqttOptions};
 use futures::Stream;
+use hass_mqtt_provider::{MqttProvider, QosLevel};
 use pin_project::pin_project;
 use std::{
 	pin::Pin,
@@ -12,26 +13,6 @@ use std::{
 	task::{Context, Poll},
 };
 use thiserror::Error;
-
-#[repr(u8)]
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-pub enum QosLevel {
-	AtLeastOnce = 0,
-	AtMostOnce = 1,
-	ExactlyOnce = 2,
-}
-
-impl From<QosLevel> for u8 {
-	fn from(qos: QosLevel) -> Self {
-		qos as u8
-	}
-}
-
-impl From<QosLevel> for i32 {
-	fn from(qos: QosLevel) -> Self {
-		qos as i32
-	}
-}
 
 #[derive(Clone)]
 pub struct Message {
@@ -114,7 +95,7 @@ impl ConnectError {
 }
 
 impl HassMqttClient {
-	pub async fn new<T: mqtt::MqttProvider>(options: HassMqttOptions) -> Result<Self, ConnectError> {
+	pub async fn new<T: MqttProvider>(options: HassMqttOptions) -> Result<Self, ConnectError> {
 		let sender = InnerClient::spawn::<T>(options)
 			.await
 			.map_err(ConnectError::new)?;
@@ -222,13 +203,15 @@ impl HassMqttClient {
 }
 
 impl HassMqttOptions {
-	pub async fn build<T: mqtt::MqttProvider>(self) -> Result<HassMqttClient, ConnectError> {
+	pub async fn build<T: MqttProvider>(self) -> Result<HassMqttClient, ConnectError> {
 		HassMqttClient::new::<T>(self).await
 	}
 
 	#[cfg(feature = "paho")]
 	#[cfg_attr(doc_cfg, doc(cfg(feature = "paho")))]
 	pub async fn build_paho(self) -> Result<HassMqttClient, ConnectError> {
-		self.build::<mqtt::PahoMqtt>().await
+		use hass_mqtt_provider_paho::PahoMqtt;
+
+		self.build::<PahoMqtt>().await
 	}
 }
