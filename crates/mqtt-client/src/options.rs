@@ -105,6 +105,20 @@ impl MqttPersistenceError {
 			spantrace: SpanTrace::capture(),
 		}
 	}
+
+	pub fn backtrace(&self) -> &Backtrace {
+		&self.backtrace
+	}
+
+	pub fn spantrace(&self) -> &SpanTrace {
+		&self.spantrace
+	}
+}
+
+impl Default for MqttPersistenceError {
+	fn default() -> Self {
+		Self::new()
+	}
 }
 
 impl fmt::Display for MqttPersistenceError {
