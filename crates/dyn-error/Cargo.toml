@@ -9,3 +9,11 @@ edition = "2021"
 
 [build-dependencies]
 hass-provide-any-probe = { version = "0.0.0", path = "../../build/provide-any-probe" }
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu"]
+rustdoc-args = ["--cfg", "doc_cfg"]
+
+[package.metadata.cargo-all-features]
+skip_optional_dependencies = true
