@@ -8,6 +8,7 @@ use std::{
 	sync::Arc,
 };
 use thiserror::Error;
+#[cfg(feature = "spantrace")]
 use tracing_error::SpanTrace;
 
 #[derive(Clone)]
@@ -94,22 +95,28 @@ impl HassMqttOptions {
 
 #[derive(Debug)]
 pub struct MqttPersistenceError {
+	#[cfg(feature = "backtrace")]
 	backtrace: Backtrace,
+	#[cfg(feature = "spantrace")]
 	spantrace: SpanTrace,
 }
 
 impl MqttPersistenceError {
 	pub fn new() -> Self {
 		MqttPersistenceError {
+			#[cfg(feature = "backtrace")]
 			backtrace: Backtrace::capture(),
+			#[cfg(feature = "spantrace")]
 			spantrace: SpanTrace::capture(),
 		}
 	}
 
+	#[cfg(feature = "backtrace")]
 	pub fn backtrace(&self) -> &Backtrace {
 		&self.backtrace
 	}
 
+	#[cfg(feature = "spantrace")]
 	pub fn spantrace(&self) -> &SpanTrace {
 		&self.spantrace
 	}
@@ -130,9 +137,10 @@ impl fmt::Display for MqttPersistenceError {
 impl std::error::Error for MqttPersistenceError {
 	#[cfg(provide_any)]
 	fn provide<'a>(&'a self, demand: &mut std::any::Demand<'a>) {
-		demand
-			.provide_ref(&self.backtrace)
-			.provide_ref(&self.spantrace);
+		#[cfg(feature = "backtrace")]
+		demand.provide_ref(&self.backtrace);
+		#[cfg(feature = "spantrace")]
+		demand.provide_ref(&self.spantrace);
 	}
 }
 

@@ -30,16 +30,19 @@ tracing-error = "0.2"
 hass-dyn-error = { version = "0.0.0", path = "../dyn-error" }
 hass-mqtt-provider = { version = "0.0.0", path = "../mqtt-provider" }
 hass-mqtt-provider-paho = { version = "0.0.0", path = "../mqtt-provider-paho", default-features = true, optional = true }
+hass-mqtt-types = { version = "0.0.0", path = "../mqtt-types", default-features = false }
 
 [build-dependencies]
 hass-provide-any-probe = { version = "0.0.0", path = "../../build/provide-any-probe" }
 
 [features]
-default = ["tls", "paho", "paho-bundled"]
+default = ["tls", "paho", "paho-bundled", "backtrace", "spantrace"]
 paho = ["hass-mqtt-provider-paho"]
 paho-bundled = ["hass-mqtt-provider-paho?/bundled"]
 tls = ["hass-mqtt-provider-paho?/ssl"]
 tls-bundled = ["hass-mqtt-provider-paho?/vendored-ssl"]
+backtrace = ["hass-mqtt-types/backtrace"]
+spantrace = ["hass-mqtt-types/spantrace"]
 
 [package.metadata.docs.rs]
 all-features = true

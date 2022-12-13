@@ -573,6 +573,7 @@ dependencies = [
  "hass-dyn-error",
  "hass-mqtt-provider",
  "hass-mqtt-provider-paho",
+ "hass-mqtt-types",
  "hass-provide-any-probe",
  "pin-project",
  "serde",
@@ -621,7 +622,7 @@ dependencies = [
 
 [[package]]
 name = "hass-mqtt-types"
-version = "0.2.0"
+version = "0.0.0"
 dependencies = [
  "assert_matches",
  "enumset",

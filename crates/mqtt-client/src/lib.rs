@@ -14,4 +14,5 @@ pub mod mqtt;
 
 pub use client::{HassMqttClient, Message};
 pub use hass_mqtt_provider::QosLevel;
+pub use hass_mqtt_types as types;
 pub use options::{HassMqttOptions, MqttOptionsError, MqttPersistenceError};

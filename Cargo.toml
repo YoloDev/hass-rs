@@ -1,4 +1,5 @@
 [workspace]
+resolver = "2"
 members = [
 	"crates/mqtt-types",
 	"crates/mqtt-macros",
@@ -13,4 +14,3 @@ members = [
 	# examples
 	"examples/mqtt-light",
 ]
-resolver = "2"

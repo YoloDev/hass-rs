@@ -47,8 +47,20 @@ jobs:
       - name: Clippy
         run: cargo clippy --all-features -- -D warnings
 
-      - name: Run tests
+      - name: Run tests (all features)
         uses: actions-rs/cargo@v1
         with:
           command: test
           args: --all --all-features
+
+      - name: Run tests (default features)
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all
+
+      - name: Run tests (no features)
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --all --no-default-features

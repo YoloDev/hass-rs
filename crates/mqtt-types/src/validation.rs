@@ -1,5 +1,7 @@
 use semval::{Invalidity, Validate};
 use std::{backtrace::Backtrace, fmt};
+
+#[cfg(feature = "spantrace")]
 use tracing_error::SpanTrace;
 
 #[cfg(provide_any)]
@@ -8,7 +10,9 @@ use std::any::{Demand, Provider};
 #[derive(Debug)]
 pub struct ValidationError<I: Invalidity + Send + Sync> {
 	invalidity: I,
+	#[cfg(feature = "backtrace")]
 	backtrace: Backtrace,
+	#[cfg(feature = "spantrace")]
 	spantrace: SpanTrace,
 }
 
@@ -17,7 +21,9 @@ impl<I: Invalidity + Send + Sync> ValidationError<I> {
 	pub fn new(invalidity: I) -> Self {
 		Self {
 			invalidity,
+			#[cfg(feature = "backtrace")]
 			backtrace: Backtrace::capture(),
+			#[cfg(feature = "spantrace")]
 			spantrace: SpanTrace::capture(),
 		}
 	}
@@ -30,10 +36,12 @@ impl<I: Invalidity + Send + Sync> ValidationError<I> {
 		self.invalidity
 	}
 
+	#[cfg(feature = "backtrace")]
 	pub fn backtrace(&self) -> &Backtrace {
 		&self.backtrace
 	}
 
+	#[cfg(feature = "spantrace")]
 	pub fn spantrace(&self) -> &SpanTrace {
 		&self.spantrace
 	}
@@ -54,10 +62,11 @@ impl<I: Invalidity + Send + Sync> fmt::Display for ValidationError<I> {
 #[cfg(provide_any)]
 impl<I: Invalidity + Send + Sync> Provider for ValidationError<I> {
 	fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
-		demand
-			.provide_ref(&self.invalidity)
-			.provide_ref(&self.backtrace)
-			.provide_ref(&self.spantrace);
+		demand.provide_ref(&self.invalidity);
+		#[cfg(feature = "backtrace")]
+		demand.provide_ref(&self.backtrace);
+		#[cfg(feature = "spantrace")]
+		demand.provide_ref(&self.spantrace);
 	}
 }
 
