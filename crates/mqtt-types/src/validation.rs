@@ -1,8 +1,11 @@
 use semval::{Invalidity, Validate};
-use std::{backtrace::Backtrace, fmt};
+use std::fmt;
 
 #[cfg(feature = "spantrace")]
 use tracing_error::SpanTrace;
+
+#[cfg(feature = "backtrace")]
+use std::backtrace::Backtrace;
 
 #[cfg(provide_any)]
 use std::any::{Demand, Provider};

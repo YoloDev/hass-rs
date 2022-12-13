@@ -2,14 +2,17 @@ use crate::topics::{ApplicationName, NodeId};
 use dirs::{cache_dir, state_dir};
 use hass_dyn_error::DynError;
 use std::{
-	backtrace::Backtrace,
 	fmt,
 	path::{Path, PathBuf},
 	sync::Arc,
 };
 use thiserror::Error;
+
 #[cfg(feature = "spantrace")]
 use tracing_error::SpanTrace;
+
+#[cfg(feature = "backtrace")]
+use std::backtrace::Backtrace;
 
 #[derive(Clone)]
 pub struct HassMqttOptions {
@@ -137,6 +140,7 @@ impl fmt::Display for MqttPersistenceError {
 impl std::error::Error for MqttPersistenceError {
 	#[cfg(provide_any)]
 	fn provide<'a>(&'a self, demand: &mut std::any::Demand<'a>) {
+		demand.provide_ref(self);
 		#[cfg(feature = "backtrace")]
 		demand.provide_ref(&self.backtrace);
 		#[cfg(feature = "spantrace")]
