@@ -37,6 +37,11 @@ jobs:
           git config --global core.symlinks true
           git config --global fetch.parallel 32
 
+      - name: Install paho
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpaho-mqtt-dev
+
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@master
         with:
