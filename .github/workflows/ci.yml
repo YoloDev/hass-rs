@@ -51,11 +51,7 @@ jobs:
         run: cargo install cargo-featurex
 
       - name: Run check (all feature permutations)
-        uses: actions-rs/cargo@v1
-        with:
-          command: featurex clippy
+        run: cargo featurex clippy
 
       - name: Run tests (all feature permutations)
-        uses: actions-rs/cargo@v1
-        with:
-          command: featurex test
+        run: cargo featurex test
