@@ -13,7 +13,7 @@ pub(super) use publish::PublishCommand;
 pub(super) use subscribe::SubscribeCommand;
 
 #[async_trait(?Send)]
-pub(super) trait ClientCommand {
+pub(crate) trait ClientCommand {
 	type Result: Send + Sync + 'static;
 	type Error: std::error::Error + Send + Sync + 'static;
 
@@ -26,12 +26,12 @@ pub(super) trait ClientCommand {
 	fn create_error(&self, source: impl std::error::Error + Send + Sync + 'static) -> Self::Error;
 }
 
-pub(super) type CommandResult<T> =
+pub(crate) type CommandResult<T> =
 	Result<<T as ClientCommand>::Result, <T as ClientCommand>::Error>;
-pub(super) type CommandResultSender<T> = oneshot::Sender<CommandResult<T>>;
-pub(super) type CommandResultReceiver<T> = oneshot::Receiver<CommandResult<T>>;
+pub(crate) type CommandResultSender<T> = oneshot::Sender<CommandResult<T>>;
+pub(crate) type CommandResultReceiver<T> = oneshot::Receiver<CommandResult<T>>;
 
-pub(super) trait FromClientCommand<T: ClientCommand>: Sized {
+pub(crate) trait FromClientCommand<T: ClientCommand>: Sized {
 	fn from_command(command: Arc<T>) -> (Self, CommandResultReceiver<T>);
 }
 
@@ -86,18 +86,22 @@ macro_rules! commands {
 }
 
 commands! {
-	pub(super) enum Command {
+	pub(crate) enum Command {
 		EntityCommand,
 		PublishCommand,
 		SubscribeCommand,
 	}
 }
 
-pub(super) fn entity(domain: Arc<str>, entity_id: Arc<str>) -> EntityCommand {
-	EntityCommand::new(domain, entity_id)
+pub(crate) fn entity(
+	domain: Arc<str>,
+	entity_id: Arc<str>,
+	topic: Option<Arc<str>>,
+) -> EntityCommand {
+	EntityCommand::new(domain, entity_id, topic)
 }
 
-pub(super) fn publish(
+pub(crate) fn publish(
 	topic: Arc<str>,
 	payload: Arc<[u8]>,
 	retained: bool,
@@ -106,6 +110,6 @@ pub(super) fn publish(
 	PublishCommand::new(topic, payload, retained, qos)
 }
 
-pub(super) fn subscribe(topic: Arc<str>, qos: QosLevel) -> SubscribeCommand {
+pub(crate) fn subscribe(topic: Arc<str>, qos: QosLevel) -> SubscribeCommand {
 	SubscribeCommand::new(topic, qos)
 }

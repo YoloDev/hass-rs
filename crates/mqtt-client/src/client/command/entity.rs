@@ -8,11 +8,16 @@ use thiserror::Error;
 pub(crate) struct EntityCommand {
 	domain: Arc<str>,
 	entity_id: Arc<str>,
+	topic: Option<Arc<str>>,
 }
 
 impl EntityCommand {
-	pub(crate) fn new(domain: Arc<str>, entity_id: Arc<str>) -> Self {
-		Self { domain, entity_id }
+	pub(crate) fn new(domain: Arc<str>, entity_id: Arc<str>, topic: Option<Arc<str>>) -> Self {
+		Self {
+			domain,
+			entity_id,
+			topic,
+		}
 	}
 }
 
@@ -39,7 +44,9 @@ impl ClientCommand for EntityCommand {
 		client: &mut InnerClient,
 		_mqtt: &T,
 	) -> Result<Self::Result, Self::Error> {
-		let topics_config = client.topics.entity(&self.domain, &self.entity_id);
+		let topics_config = client
+			.topics
+			.entity(&self.domain, &self.entity_id, self.topic.clone());
 
 		Ok(EntityCommandResult {
 			topics: topics_config,

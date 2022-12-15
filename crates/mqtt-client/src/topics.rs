@@ -77,8 +77,13 @@ impl TopicsConfig {
 		)
 	}
 
-	pub(crate) fn entity(&self, domain: &str, entity_id: &str) -> EntityTopicsConfig {
-		EntityTopicsConfig::new(self, domain, entity_id)
+	pub(crate) fn entity(
+		&self,
+		domain: &str,
+		entity_id: &str,
+		topic: Option<Arc<str>>,
+	) -> EntityTopicsConfig {
+		EntityTopicsConfig::new(self, domain, entity_id, topic)
 	}
 
 	pub(crate) fn available(&self) -> String {
@@ -94,16 +99,19 @@ impl TopicsConfig {
 		)
 	}
 
-	fn entity_topic(&self, domain: &str, entity_id: &str, kind: &str, name: &str) -> String {
-		self.node_topic(format!("{domain}/{entity_id}/{kind}/{name}"))
+	fn entity_topic(&self, domain: &str, entity_id: &str, kind: &str, name: Option<&str>) -> String {
+		match name {
+			Some(name) => self.node_topic(format!("{domain}/{entity_id}/{kind}/{name}")),
+			None => self.node_topic(format!("{domain}/{entity_id}/{kind}")),
+		}
 	}
 
-	fn state_topic(&self, domain: &str, entity_id: &str, name: &str) -> String {
+	fn state_topic(&self, domain: &str, entity_id: &str, name: Option<&str>) -> String {
 		self.entity_topic(domain, entity_id, "state", name)
 	}
 
-	fn command_topic(&self, domain: &str, entity_id: &str, name: &str) -> String {
-		self.entity_topic(domain, entity_id, "command", name)
+	fn command_topic(&self, domain: &str, entity_id: &str, name: Option<&str>) -> String {
+		self.entity_topic(domain, entity_id, "set", name)
 	}
 
 	pub(crate) fn online_message<T: MqttMessage>(
@@ -123,6 +131,7 @@ pub(crate) struct EntityTopicsConfig {
 	topics: TopicsConfig,
 	pub(crate) domain: Arc<str>,
 	pub(crate) entity_id: Arc<str>,
+	pub(crate) discovery_topic: Arc<str>,
 }
 
 impl EntityTopicsConfig {
@@ -130,23 +139,30 @@ impl EntityTopicsConfig {
 		topics: &TopicsConfig,
 		domain: impl Into<Arc<str>>,
 		entity_id: impl Into<Arc<str>>,
+		topic: Option<Arc<str>>,
 	) -> Self {
+		let domain = domain.into();
+		let entity_id = entity_id.into();
+		let discovery_topic =
+			topic.unwrap_or_else(|| Arc::from(topics.discovery_topic(&domain, &entity_id)));
+
 		EntityTopicsConfig {
 			topics: topics.clone(),
-			domain: domain.into(),
-			entity_id: entity_id.into(),
+			domain,
+			entity_id,
+			discovery_topic,
 		}
 	}
 
-	pub(crate) fn discovery_topic(&self) -> String {
-		self.topics.discovery_topic(&self.domain, &self.entity_id)
+	pub(crate) fn discovery_topic(&self) -> Arc<str> {
+		self.discovery_topic.clone()
 	}
 
-	pub(crate) fn state_topic(&self, name: &str) -> String {
+	pub(crate) fn state_topic(&self, name: Option<&str>) -> String {
 		self.topics.state_topic(&self.domain, &self.entity_id, name)
 	}
 
-	pub(crate) fn command_topic(&self, name: &str) -> String {
+	pub(crate) fn command_topic(&self, name: Option<&str>) -> String {
 		self
 			.topics
 			.command_topic(&self.domain, &self.entity_id, name)

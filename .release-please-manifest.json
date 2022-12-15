@@ -1,6 +1,1 @@
-{
-	"crates/mqtt-types": "0.2.0",
-	"crates/entity-state": "0.2.0",
-	"crates/mqtt-client": "0.0.0",
-	"crates/mqtt-macros": "0.0.0"
-}
+{}

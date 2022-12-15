@@ -55,7 +55,7 @@ impl ConnectError {
 	}
 }
 
-pub(super) struct InnerClient {
+pub(crate) struct InnerClient {
 	pub(super) topics: TopicsConfig,
 	pub(super) router: Router<flume::Sender<Message>>,
 	pub(super) subscriptions: Subscriptions,

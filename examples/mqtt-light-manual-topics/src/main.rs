@@ -38,9 +38,12 @@ enum ApplicationError {
 
 #[tokio::main]
 async fn main() -> error_stack::Result<(), ApplicationError> {
+	// const UNIQUE_ID: &str = "0xabcdef0123456789";
+	const ROOT: &str = "homeassistant/light/0xabcdef0123456789";
+
 	println!("creating client");
 	let client = HassMqttOptions::new("localhost", "mqtt-light")
-		.node_id("1")
+		.node_id("2")
 		.build_paho()
 		.await
 		.into_report()
@@ -49,6 +52,7 @@ async fn main() -> error_stack::Result<(), ApplicationError> {
 	println!("creating entity");
 	let light_entity = client
 		.entity("light", "mqtt_light")
+		.with_topic(format!("{ROOT}/config"))
 		.await
 		.into_report()
 		.change_context(ApplicationError::CreateEntity)?;
@@ -56,6 +60,7 @@ async fn main() -> error_stack::Result<(), ApplicationError> {
 	println!("creating command topic");
 	let mut command_topic = light_entity
 		.command_topic()
+		.topic(format!("{ROOT}/set"))
 		.qos(QosLevel::AtLeastOnce)
 		.await
 		.into_report()
@@ -64,6 +69,7 @@ async fn main() -> error_stack::Result<(), ApplicationError> {
 	println!("creating state topic");
 	let state_topic = light_entity
 		.state_topic()
+		.topic(format!("{ROOT}/state"))
 		.await
 		.into_report()
 		.change_context(ApplicationError::StateTopic)?;

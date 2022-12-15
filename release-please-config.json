@@ -20,9 +20,11 @@
 		{ "type": "deps", "section": "Dependencies" }
 	],
 	"packages": {
-		"crates/mqtt-types": {},
+		"crates/dyn-error": {},
 		"crates/mqtt-client": {},
 		"crates/mqtt-macros": {},
-		"crates/entity-state": {}
+		"crates/mqtt-provider": {},
+		"crates/mqtt-provider-paho": {},
+		"crates/mqtt-types": {}
 	}
 }

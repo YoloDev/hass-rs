@@ -1,9 +1,9 @@
-mod command;
-mod inner;
-mod subscription;
+pub(crate) mod command;
+pub(crate) mod inner;
+pub(crate) mod subscription;
 
 use self::{inner::InnerClient, subscription::SubscriptionToken};
-use crate::{entity::EntityTopic, error::DynError, HassMqttOptions};
+use crate::{entity::EntityTopicBuilder, error::DynError, HassMqttOptions};
 use futures::Stream;
 use hass_mqtt_provider::{MqttProvider, QosLevel};
 use pin_project::pin_project;
@@ -59,7 +59,7 @@ pub struct HassMqttClient {
 }
 
 impl HassMqttClient {
-	async fn command<T>(&self, cmd: T) -> command::CommandResult<T>
+	pub(crate) async fn command<T>(&self, cmd: T) -> command::CommandResult<T>
 	where
 		T: command::ClientCommand,
 		command::Command: command::FromClientCommand<T>,
@@ -103,33 +103,13 @@ impl HassMqttClient {
 	}
 }
 
-#[derive(Debug, Error)]
-#[error("failed to create MQTT entity: {domain}.{entity_id}")]
-pub struct CreateEntityError {
-	domain: Arc<str>,
-	entity_id: Arc<str>,
-	#[cfg_attr(provide_any, backtrace)]
-	source: DynError,
-}
-
 impl HassMqttClient {
-	pub async fn entity(
+	pub fn entity(
 		&self,
 		domain: impl Into<Arc<str>>,
 		entity_id: impl Into<Arc<str>>,
-	) -> Result<EntityTopic, CreateEntityError> {
-		let domain = domain.into();
-		let entity_id = entity_id.into();
-		let result = self
-			.command(command::entity(domain.clone(), entity_id.clone()))
-			.await
-			.map_err(|source| CreateEntityError {
-				domain,
-				entity_id,
-				source: DynError::new(source),
-			})?;
-
-		Ok(EntityTopic::new(self.clone(), result.topics))
+	) -> EntityTopicBuilder {
+		EntityTopicBuilder::new(self, domain, entity_id)
 	}
 }
 
