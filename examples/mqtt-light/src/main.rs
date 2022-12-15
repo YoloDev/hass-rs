@@ -55,16 +55,14 @@ async fn main() -> error_stack::Result<(), ApplicationError> {
 		.await
 		.into_report()
 		.change_context(ApplicationError::CommandTopic)?;
-	let command_topic_name = command_topic.topic();
 
 	println!("creating state topic");
 	let state_topic = light_entity.state_topic("json");
-	let state_topic_name = state_topic.topic();
 
-	let light_discovery_document = Light::new(&*command_topic_name)
+	let light_discovery_document = Light::new(&command_topic)
 		.object_id("mqtt_light")
 		.name("MQTT Light")
-		.state_topic(&*state_topic_name);
+		.state_topic(&state_topic);
 	let light_discovery_document = serde_json::to_vec(&light_discovery_document)
 		.into_report()
 		.change_context(ApplicationError::SerializeDiscoveryDocument)?;

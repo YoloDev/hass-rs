@@ -97,6 +97,12 @@ pub struct StateTopic {
 	topic: Arc<str>,
 }
 
+impl<'a> From<&'a StateTopic> for hass_mqtt_types::Topic<'a> {
+	fn from(topic: &'a StateTopic) -> Self {
+		topic.topic.as_ref().into()
+	}
+}
+
 impl StateTopic {
 	pub(crate) fn new(
 		client: HassMqttClient,
@@ -139,6 +145,12 @@ pub struct CommandTopic {
 	_client: HassMqttClient,
 	#[pin]
 	subscription: Subscription,
+}
+
+impl<'a> From<&'a CommandTopic> for hass_mqtt_types::Topic<'a> {
+	fn from(topic: &'a CommandTopic) -> Self {
+		topic.subscription.topic.as_ref().into()
+	}
 }
 
 impl CommandTopic {

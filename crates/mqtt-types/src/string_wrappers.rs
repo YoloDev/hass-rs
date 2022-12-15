@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 /// Does the heavy lifting of visiting borrowed strings
 struct TypedStrVisitor<T>(std::marker::PhantomData<T>);
 
@@ -21,10 +23,24 @@ macro_rules! typed_str {
       }
     }
 
+		impl<'a> From<&'a Arc<str>> for $name<'a> {
+      #[inline]
+      fn from(value: &'a Arc<str>) -> Self {
+        Self::from(&**value)
+      }
+    }
+
     impl From<String> for $name<'_> {
       #[inline]
       fn from(value: String) -> Self {
         Self(std::borrow::Cow::Owned(value))
+      }
+    }
+
+		impl From<Arc<str>> for $name<'_> {
+      #[inline]
+      fn from(value: Arc<str>) -> Self {
+        Self::from(ToOwned::to_owned(&*value))
       }
     }
 
