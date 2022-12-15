@@ -14,3 +14,7 @@ members = [
 	# examples
 	"examples/mqtt-light",
 ]
+
+[workspace.metadata.featurex]
+ignored = ["default?"]
+required = ["bundled?"]

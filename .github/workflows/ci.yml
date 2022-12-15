@@ -37,11 +37,6 @@ jobs:
           git config --global core.symlinks true
           git config --global fetch.parallel 32
 
-      - name: Install paho
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libpaho-mqtt-dev
-
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@master
         with:
@@ -53,14 +48,14 @@ jobs:
         run: cargo clippy --all-features -- -D warnings
 
       - name: Install cargo-all-features
-        run: cargo install cargo-all-features
+        run: cargo install cargo-featurex
 
       - name: Run check (all feature permutations)
         uses: actions-rs/cargo@v1
         with:
-          command: check-all-features
+          command: featurex clippy
 
       - name: Run tests (all feature permutations)
         uses: actions-rs/cargo@v1
         with:
-          command: test-all-features
+          command: featurex test

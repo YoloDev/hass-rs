@@ -20,12 +20,9 @@ hass-mqtt-provider = { version = "0.0.0", path = "../mqtt-provider" }
 default = ["bundled", "ssl"]
 bundled = ["paho-mqtt/bundled"]
 ssl = ["paho-mqtt/ssl"]
-vendored-ssl = ["paho-mqtt/vendored-ssl"]
+vendored-ssl = ["ssl", "paho-mqtt/vendored-ssl"]
 
 [package.metadata.docs.rs]
 all-features = true
 targets = ["x86_64-unknown-linux-gnu"]
 rustdoc-args = ["--cfg", "doc_cfg"]
-
-[package.metadata.cargo-all-features]
-skip_optional_dependencies = true
