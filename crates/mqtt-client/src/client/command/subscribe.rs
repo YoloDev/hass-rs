@@ -1,9 +1,7 @@
 use super::{ClientCommand, InnerClient};
-use crate::{
-	client::{subscription::SubscriptionToken, Message, QosLevel},
-	error::DynError,
-};
+use crate::client::{subscription::SubscriptionToken, Message, QosLevel};
 use async_trait::async_trait;
+use hass_dyn_error::DynError;
 use hass_mqtt_provider::MqttClient;
 use std::sync::Arc;
 use thiserror::Error;

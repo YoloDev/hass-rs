@@ -1,6 +1,7 @@
 use super::{ClientCommand, InnerClient};
-use crate::{error::DynError, topics::EntityTopicsConfig};
+use crate::topics::EntityTopicsConfig;
 use async_trait::async_trait;
+use hass_dyn_error::DynError;
 use hass_mqtt_provider::MqttClient;
 use std::sync::Arc;
 use thiserror::Error;

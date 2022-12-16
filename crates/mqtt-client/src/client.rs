@@ -3,8 +3,9 @@ pub(crate) mod inner;
 pub(crate) mod subscription;
 
 use self::{inner::InnerClient, subscription::SubscriptionToken};
-use crate::{entity::EntityTopicBuilder, error::DynError, HassMqttOptions};
+use crate::{entity::EntityTopicBuilder, HassMqttOptions};
 use futures::Stream;
+use hass_dyn_error::DynError;
 use hass_mqtt_provider::{MqttProvider, QosLevel};
 use pin_project::pin_project;
 use std::{
