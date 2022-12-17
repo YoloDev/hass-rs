@@ -1,26 +1,30 @@
 {
-  "bootstrap-sha": "f00f32c9651bc1c0c47d70b1f782b9490f223df4",
-  "plugins": ["cargo-workspace"],
-  "release-type": "rust",
-  "bump-minor-pre-major": true,
-  "bump-patch-for-minor-pre-major": true,
-  "changelog-sections": [
-    { "type": "feat", "section": "Features" },
-    { "type": "feature", "section": "Features" },
-    { "type": "fix", "section": "Bug Fixes" },
-    { "type": "perf", "section": "Performance Improvements" },
-    { "type": "revert", "section": "Reverts" },
-    { "type": "docs", "section": "Documentation", "hidden": true },
-    { "type": "style", "section": "Styles", "hidden": true },
-    { "type": "chore", "section": "Miscellaneous Chores", "hidden": true },
-    { "type": "refactor", "section": "Code Refactoring", "hidden": true },
-    { "type": "test", "section": "Tests", "hidden": true },
-    { "type": "build", "section": "Build System", "hidden": true },
-    { "type": "ci", "section": "Continuous Integration", "hidden": true },
-    { "type": "deps", "section": "Dependencies" }
-  ],
-  "packages": {
-    "crates/discovery": {},
-    "crates/entity-state": {}
-  }
+	"bootstrap-sha": "f00f32c9651bc1c0c47d70b1f782b9490f223df4",
+	"plugins": ["cargo-workspace"],
+	"release-type": "rust",
+	"bump-minor-pre-major": true,
+	"bump-patch-for-minor-pre-major": true,
+	"changelog-sections": [
+		{ "type": "feat", "section": "Features" },
+		{ "type": "feature", "section": "Features" },
+		{ "type": "fix", "section": "Bug Fixes" },
+		{ "type": "perf", "section": "Performance Improvements" },
+		{ "type": "revert", "section": "Reverts" },
+		{ "type": "docs", "section": "Documentation", "hidden": true },
+		{ "type": "style", "section": "Styles", "hidden": true },
+		{ "type": "chore", "section": "Miscellaneous Chores", "hidden": true },
+		{ "type": "refactor", "section": "Code Refactoring", "hidden": true },
+		{ "type": "test", "section": "Tests", "hidden": true },
+		{ "type": "build", "section": "Build System", "hidden": true },
+		{ "type": "ci", "section": "Continuous Integration", "hidden": true },
+		{ "type": "deps", "section": "Dependencies" }
+	],
+	"packages": {
+		"crates/dyn-error": {},
+		"crates/mqtt-client": {},
+		"crates/mqtt-macros": {},
+		"crates/mqtt-provider": {},
+		"crates/mqtt-provider-paho": {},
+		"crates/mqtt-types": {}
+	}
 }

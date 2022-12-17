@@ -21,7 +21,14 @@ jobs:
         (github.ref != 'refs/heads/main' &&
         !startsWith(github.ref, 'refs/tags/')) }}
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os:
+          - macos-latest
+          # - windows-latest
+          - ubuntu-latest
+        channel:
+          - stable
+          # - beta
+          - nightly
 
     steps:
       - name: Configure git
@@ -31,14 +38,20 @@ jobs:
           git config --global fetch.parallel 32
 
       - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.channel }}
+          components: clippy
       - uses: Swatinem/rust-cache@v2
 
       - name: Clippy
-        run: cargo clippy -- -D warnings
+        run: cargo clippy --all-features -- -D warnings
 
-      - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all --all-features
+      - name: Install cargo-all-features
+        run: cargo install cargo-featurex
+
+      - name: Run check (all feature permutations)
+        run: cargo featurex clippy
+
+      - name: Run tests (all feature permutations)
+        run: cargo featurex test
