@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-	"crates/mqtt-types",
+	"crates/mqtt-proto",
 	"crates/mqtt-macros",
 	"crates/mqtt-client",
 	"crates/mqtt-provider",

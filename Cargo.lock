@@ -475,9 +475,9 @@ dependencies = [
  "futures",
  "generational-arena",
  "hass-dyn-error",
+ "hass-mqtt-proto",
  "hass-mqtt-provider",
  "hass-mqtt-provider-paho",
- "hass-mqtt-types",
  "hass-provide-any-probe",
  "pin-project",
  "serde",
@@ -503,6 +503,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "hass-mqtt-proto"
+version = "0.0.0"
+dependencies = [
+ "assert_matches",
+ "enumset",
+ "hass-mqtt-macros",
+ "hass-provide-any-probe",
+ "nameof",
+ "semval",
+ "serde",
+ "serde_json",
+ "serde_repr",
+ "serde_test",
+ "thiserror",
+ "tracing-error",
+]
+
+[[package]]
 name = "hass-mqtt-provider"
 version = "0.0.0"
 dependencies = [
@@ -522,24 +540,6 @@ dependencies = [
  "pin-project",
  "thiserror",
  "tokio",
-]
-
-[[package]]
-name = "hass-mqtt-types"
-version = "0.0.0"
-dependencies = [
- "assert_matches",
- "enumset",
- "hass-mqtt-macros",
- "hass-provide-any-probe",
- "nameof",
- "semval",
- "serde",
- "serde_json",
- "serde_repr",
- "serde_test",
- "thiserror",
- "tracing-error",
 ]
 
 [[package]]
@@ -662,7 +662,6 @@ dependencies = [
  "error-stack",
  "futures",
  "hass-mqtt-client",
- "hass-mqtt-types",
  "serde_json",
  "thiserror",
  "tokio",
@@ -675,7 +674,6 @@ dependencies = [
  "error-stack",
  "futures",
  "hass-mqtt-client",
- "hass-mqtt-types",
  "serde_json",
  "thiserror",
  "tokio",

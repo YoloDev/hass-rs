@@ -15,6 +15,6 @@ pub use entity::{
 	CommandTopic, CommandTopicBuilder, CreateEntityError, EntityPublishError, EntitySubscribeError,
 	EntityTopic, EntityTopicBuilder, StateTopic, StateTopicBuilder,
 };
+pub use hass_mqtt_proto as proto;
 pub use hass_mqtt_provider::QosLevel;
-pub use hass_mqtt_types as types;
 pub use options::{HassMqttOptions, MqttOptionsError, MqttPersistenceError};
