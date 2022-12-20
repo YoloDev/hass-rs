@@ -25,6 +25,6 @@
 		"crates/mqtt-macros": {},
 		"crates/mqtt-provider": {},
 		"crates/mqtt-provider-paho": {},
-		"crates/mqtt-types": {}
+		"crates/mqtt-proto": {}
 	}
 }

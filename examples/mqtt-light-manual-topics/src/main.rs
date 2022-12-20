@@ -1,7 +1,9 @@
 use error_stack::{IntoReport, ResultExt};
 use futures::StreamExt;
-use hass_mqtt_client::{HassMqttOptions, Message, QosLevel};
-use hass_mqtt_types::{entity::LightState, Light};
+use hass_mqtt_client::{
+	proto::{entity::LightState, Light},
+	HassMqttOptions, Message, QosLevel,
+};
 use std::time::Duration;
 use thiserror::Error;
 use tokio::{select, time::sleep};

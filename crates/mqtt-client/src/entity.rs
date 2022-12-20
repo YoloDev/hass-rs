@@ -261,7 +261,7 @@ pub struct StateTopic {
 	topic: Arc<str>,
 }
 
-impl<'a> From<&'a StateTopic> for hass_mqtt_types::Topic<'a> {
+impl<'a> From<&'a StateTopic> for hass_mqtt_proto::Topic<'a> {
 	fn from(topic: &'a StateTopic) -> Self {
 		topic.topic.as_ref().into()
 	}
@@ -311,7 +311,7 @@ pub struct CommandTopic {
 	subscription: Subscription,
 }
 
-impl<'a> From<&'a CommandTopic> for hass_mqtt_types::Topic<'a> {
+impl<'a> From<&'a CommandTopic> for hass_mqtt_proto::Topic<'a> {
 	fn from(topic: &'a CommandTopic) -> Self {
 		topic.subscription.topic.as_ref().into()
 	}

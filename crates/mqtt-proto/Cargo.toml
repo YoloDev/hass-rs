@@ -1,5 +1,5 @@
 [package]
-name = "hass-mqtt-types"
+name = "hass-mqtt-proto"
 version = "0.0.0"
 edition = "2021"
 description = "home-assistant MQTT discovery types"
