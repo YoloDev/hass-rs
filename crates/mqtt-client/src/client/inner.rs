@@ -8,7 +8,7 @@ use crate::{
 use futures::{pin_mut, StreamExt};
 use hass_dyn_error::DynError;
 use hass_mqtt_provider::{MqttClient, MqttMessage, MqttProvider};
-use std::{thread, time::Duration};
+use std::{sync::Arc, thread, time::Duration};
 use thiserror::Error;
 use tokio::select;
 
@@ -128,7 +128,7 @@ impl InnerClient {
 
 	pub(super) async fn spawn<P: MqttProvider>(
 		options: HassMqttOptions,
-	) -> Result<flume::Sender<Command>, ConnectError> {
+	) -> Result<(flume::Sender<Command>, Arc<str>), ConnectError> {
 		let (result_sender, result_receiver) = tokio::sync::oneshot::channel();
 
 		thread::Builder::new()
@@ -151,6 +151,7 @@ impl InnerClient {
 					let HassMqttConnection {
 						topics,
 						client: mqtt_client,
+						client_id,
 					} = match <P as MqttProviderExt>::create_client(&options)
 						.await
 						.map_err(ConnectError::connect)
@@ -164,7 +165,7 @@ impl InnerClient {
 
 					let client = InnerClient::new(topics);
 
-					let _ = result_sender.send(Ok(sender));
+					let _ = result_sender.send(Ok((sender, client_id.into())));
 					client.run(mqtt_client, receiver).await;
 				});
 

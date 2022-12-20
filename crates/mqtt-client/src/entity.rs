@@ -12,31 +12,40 @@ use std::{
 	sync::Arc,
 };
 use thiserror::Error;
+use tracing::{instrument, span, Instrument, Level, Span};
 
 pub struct EntityTopicBuilder<'a> {
 	client: &'a HassMqttClient,
 	domain: Arc<str>,
 	entity_id: Arc<str>,
 	topic: Option<Arc<str>>,
+	span: Span,
 }
 
 impl<'a> EntityTopicBuilder<'a> {
 	pub(crate) fn new(
 		client: &'a HassMqttClient,
-		domain: impl Into<Arc<str>>,
-		entity_id: impl Into<Arc<str>>,
+		domain: Arc<str>,
+		entity_id: Arc<str>,
+		span: Span,
 	) -> Self {
 		EntityTopicBuilder {
 			client,
-			domain: domain.into(),
-			entity_id: entity_id.into(),
+			domain,
+			entity_id,
 			topic: None,
+			span,
 		}
 	}
 
 	pub fn with_topic(self, topic: impl Into<Arc<str>>) -> Self {
+		let topic = topic.into();
+		self
+			.span
+			.record("entity.topic", tracing::field::display(&topic));
+
 		EntityTopicBuilder {
-			topic: Some(topic.into()),
+			topic: Some(topic),
 			..self
 		}
 	}
@@ -79,6 +88,7 @@ impl<'a> IntoFuture for EntityTopicBuilder<'a> {
 
 			Ok(EntityTopic::new(self.client.clone(), result.topics))
 		}
+		.instrument(self.span)
 		.boxed()
 	}
 }
@@ -94,9 +104,16 @@ impl EntityTopic {
 	}
 
 	pub fn state_topic(&self) -> StateTopicBuilder {
+		let span = span!(
+			Level::DEBUG,
+			"EntityTopic::state_topic",
+			entity.domain = %self.topics.domain,
+			entity.entity_id = %self.topics.entity_id);
+
 		StateTopicBuilder {
 			entity: self,
 			topic: TopicName::Default,
+			span,
 		}
 	}
 }
@@ -114,6 +131,26 @@ impl EntityTopic {
 	pub async fn publish(
 		&self,
 		payload: impl Into<Arc<[u8]>>,
+		retained: bool,
+		qos: QosLevel,
+	) -> Result<(), EntityPublishError> {
+		self._publish(payload.into(), retained, qos).await
+	}
+
+	#[instrument(
+		level = Level::DEBUG,
+		name = "EntityTopic::publish",
+		skip_all,
+		fields(
+			entity.topic,
+			message.retained = retained,
+			message.qos = %qos,
+			message.payload.len = payload.len(),
+		)
+	)]
+	async fn _publish(
+		&self,
+		payload: Arc<[u8]>,
 		retained: bool,
 		qos: QosLevel,
 	) -> Result<(), EntityPublishError> {
@@ -170,6 +207,7 @@ impl TopicName {
 pub struct StateTopicBuilder<'a> {
 	entity: &'a EntityTopic,
 	topic: TopicName,
+	span: Span,
 }
 
 impl<'a> StateTopicBuilder<'a> {
@@ -190,7 +228,7 @@ impl<'a> StateTopicBuilder<'a> {
 
 impl<'a> IntoFuture for StateTopicBuilder<'a> {
 	type Output = Result<StateTopic, Infallible>;
-	type IntoFuture = Ready<Self::Output>;
+	type IntoFuture = BoxFuture<'a, Self::Output>;
 
 	fn into_future(self) -> Self::IntoFuture {
 		let topic = self.topic.get(|s| self.entity.topics.state_topic(s));
@@ -200,6 +238,8 @@ impl<'a> IntoFuture for StateTopicBuilder<'a> {
 			self.entity.topics.domain.clone(),
 			topic,
 		)))
+		.instrument(self.span)
+		.boxed()
 	}
 }
 
@@ -289,6 +329,26 @@ impl StateTopic {
 	pub async fn publish(
 		&self,
 		payload: impl Into<Arc<[u8]>>,
+		retained: bool,
+		qos: QosLevel,
+	) -> Result<(), EntityPublishError> {
+		self._publish(payload.into(), retained, qos).await
+	}
+
+	#[instrument(
+		level = Level::DEBUG,
+		name = "StateTopic::publish",
+		skip_all,
+		fields(
+			state.topic = %self.topic,
+			message.retained = retained,
+			message.qos = %qos,
+			message.payload.len = payload.len(),
+		)
+	)]
+	async fn _publish(
+		&self,
+		payload: Arc<[u8]>,
 		retained: bool,
 		qos: QosLevel,
 	) -> Result<(), EntityPublishError> {

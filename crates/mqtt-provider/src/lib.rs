@@ -1,6 +1,9 @@
 use async_trait::async_trait;
 use futures::stream::Stream;
-use std::path::PathBuf;
+use std::{
+	fmt::{self, Write},
+	path::PathBuf,
+};
 
 #[repr(u8)]
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
@@ -8,6 +11,16 @@ pub enum QosLevel {
 	AtLeastOnce = 0,
 	AtMostOnce = 1,
 	ExactlyOnce = 2,
+}
+
+impl fmt::Display for QosLevel {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			QosLevel::AtLeastOnce => f.write_char('0'),
+			QosLevel::AtMostOnce => f.write_char('1'),
+			QosLevel::ExactlyOnce => f.write_char('2'),
+		}
+	}
 }
 
 impl From<QosLevel> for u8 {

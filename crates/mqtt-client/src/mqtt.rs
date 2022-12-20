@@ -8,6 +8,7 @@ where
 {
 	pub(crate) topics: TopicsConfig,
 	pub(crate) client: T,
+	pub(crate) client_id: String,
 }
 
 #[async_trait(?Send)]
@@ -33,7 +34,11 @@ pub(crate) trait MqttProviderExt: MqttProvider {
 			.map_err(|e| Self::Error::create_message("offline", e))?;
 
 		let client = Self::create(options, &client_id, online_message, offline_message).await?;
-		Ok(HassMqttConnection { topics, client })
+		Ok(HassMqttConnection {
+			topics,
+			client,
+			client_id,
+		})
 	}
 }
 
