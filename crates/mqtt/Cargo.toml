@@ -1,0 +1,13 @@
+[package]
+name = "hass-mqtt"
+version = "0.0.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+async-trait = "0.1"
+static_assertions = "1"
+xtra = { version = "0.5", features = ["with-tokio-1"] }
+
+hass-mqtt-client = { version = "0.0.0", path = "../mqtt-client" }

@@ -84,6 +84,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "barrage"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "be5951c75bdabb58753d140dd5802f12ff3a483cb2e16fb5276e111b94b19e87"
+dependencies = [
+ "concurrent-queue",
+ "event-listener",
+ "spin",
+]
+
+[[package]]
 name = "bitflags"
 version = "1.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -106,6 +117,15 @@ name = "cache-padded"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c1db59621ec70f09c5e9b597b220c7a2b43611f4710dc03ceb8748637775692c"
+
+[[package]]
+name = "catty"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "dcf0adb3cc1c06945672f8dcc827e42497ac6d0aff49f459ec918132b82a5cbc"
+dependencies = [
+ "spin",
+]
 
 [[package]]
 name = "cc"
@@ -461,6 +481,16 @@ name = "hass-dyn-error"
 version = "0.0.0"
 dependencies = [
  "hass-provide-any-probe",
+]
+
+[[package]]
+name = "hass-mqtt"
+version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "hass-mqtt-client",
+ "static_assertions",
+ "xtra",
 ]
 
 [[package]]
@@ -837,6 +867,12 @@ name = "pkg-config"
 version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6ac9a59f73473f1b8d852421e59e64809f025994837ef743615c6d0c5b305160"
+
+[[package]]
+name = "pollster"
+version = "0.2.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5da3b0203fd7ee5720aa0b5e790b591aa5d3f41c3ed2c34a3a393382198af2f7"
 
 [[package]]
 name = "proc-macro2"
@@ -1339,3 +1375,21 @@ name = "windows_x86_64_msvc"
 version = "0.42.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f40009d85759725a34da6d89a94e63d7bdc50a862acf0dbc7c8e488f1edcb6f5"
+
+[[package]]
+name = "xtra"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bca0a1b28e7cf635b4e961c7330416bf842a89bca42f5c707ab02a065e1ee60f"
+dependencies = [
+ "async-trait",
+ "barrage",
+ "catty",
+ "flume",
+ "futures-core",
+ "futures-sink",
+ "futures-timer",
+ "futures-util",
+ "pollster",
+ "tokio",
+]

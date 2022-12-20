@@ -27,6 +27,7 @@ pub struct Device<'a> {
 	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
 	pub model: Option<Cow<'a, str>>,
 
+	/// The name of the device.
 	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
 	pub name: Option<Name<'a>>,
 
