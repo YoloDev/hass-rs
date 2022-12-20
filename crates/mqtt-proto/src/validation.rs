@@ -40,11 +40,13 @@ impl<I: Invalidity + Send + Sync> ValidationError<I> {
 	}
 
 	#[cfg(feature = "backtrace")]
+	#[cfg_attr(doc_cfg, doc(cfg(feature = "backtrace")))]
 	pub fn backtrace(&self) -> &Backtrace {
 		&self.backtrace
 	}
 
 	#[cfg(feature = "spantrace")]
+	#[cfg_attr(doc_cfg, doc(cfg(feature = "spantrace")))]
 	pub fn spantrace(&self) -> &SpanTrace {
 		&self.spantrace
 	}

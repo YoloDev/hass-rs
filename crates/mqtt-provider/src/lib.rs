@@ -114,6 +114,7 @@ pub struct MqttOptions {
 	pub host: String,
 	pub port: u16,
 	#[cfg(feature = "tls")]
+	#[cfg_attr(doc_cfg, doc(cfg(feature = "tls")))]
 	pub tls: bool,
 	pub auth: Option<MqttAuthOptions>,
 	pub persitence: PathBuf,
@@ -149,6 +150,7 @@ impl MqttOptions {
 	}
 
 	#[cfg(feature = "tls")]
+	#[cfg_attr(doc_cfg, doc(cfg(feature = "tls")))]
 	pub fn tls(&mut self, tls: bool) -> &mut Self {
 		self.tls = tls;
 		self

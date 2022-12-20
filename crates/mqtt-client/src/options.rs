@@ -99,8 +99,10 @@ impl HassMqttOptions {
 #[derive(Debug)]
 pub struct MqttPersistenceError {
 	#[cfg(feature = "backtrace")]
+	#[cfg_attr(doc_cfg, doc(cfg(feature = "backtrace")))]
 	backtrace: Backtrace,
 	#[cfg(feature = "spantrace")]
+	#[cfg_attr(doc_cfg, doc(cfg(feature = "spantrace")))]
 	spantrace: SpanTrace,
 }
 
@@ -115,11 +117,13 @@ impl MqttPersistenceError {
 	}
 
 	#[cfg(feature = "backtrace")]
+	#[cfg_attr(doc_cfg, doc(cfg(feature = "backtrace")))]
 	pub fn backtrace(&self) -> &Backtrace {
 		&self.backtrace
 	}
 
 	#[cfg(feature = "spantrace")]
+	#[cfg_attr(doc_cfg, doc(cfg(feature = "spantrace")))]
 	pub fn spantrace(&self) -> &SpanTrace {
 		&self.spantrace
 	}
@@ -220,6 +224,7 @@ impl MqttOptions {
 	}
 
 	#[cfg(feature = "tls")]
+	#[cfg_attr(doc_cfg, doc(cfg(feature = "tls")))]
 	pub fn tls(&mut self, tls: bool) -> &mut Self {
 		self.tls = tls;
 		self
