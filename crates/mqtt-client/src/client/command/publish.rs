@@ -41,8 +41,7 @@ impl ClientCommand for PublishCommand {
 
 	async fn run<T: MqttClient>(
 		&self,
-		_client: &mut InnerClient,
-		mqtt: &T,
+		client: &mut InnerClient<T>,
 	) -> Result<Self::Result, Self::Error> {
 		let msg = <T::Message as MqttBuildableMessage>::builder()
 			.topic(&*self.topic)
@@ -52,7 +51,8 @@ impl ClientCommand for PublishCommand {
 			.build()
 			.map_err(|source| self.create_error(source))?;
 
-		mqtt
+		client
+			.client
 			.publish(msg)
 			.await
 			.map_err(|source| self.create_error(source))

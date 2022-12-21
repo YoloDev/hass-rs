@@ -20,8 +20,7 @@ pub(crate) trait ClientCommand {
 
 	async fn run<T: MqttClient>(
 		&self,
-		client: &mut InnerClient,
-		mqtt: &T,
+		client: &mut InnerClient<T>,
 	) -> Result<Self::Result, Self::Error>;
 
 	fn create_error(&self, source: impl std::error::Error + Send + Sync + 'static) -> Self::Error;
@@ -66,13 +65,12 @@ macro_rules! commands {
 
 			pub(super) async fn run<T: MqttClient>(
 				self,
-				client: &mut InnerClient,
-				mqtt: &T,
+				client: &mut InnerClient<T>,
 			) {
 				match self {
 					$(
 						Self::$variant(command, tx, span) => {
-							let result = command.run(client, mqtt).instrument(span).await;
+							let result = command.run(client).instrument(span).await;
 
 							if let Err(_err) = tx.send(result) {
 								// TODO: log

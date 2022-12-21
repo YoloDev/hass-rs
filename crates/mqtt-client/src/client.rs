@@ -2,7 +2,7 @@ pub(crate) mod command;
 pub(crate) mod inner;
 pub(crate) mod subscription;
 
-use self::{inner::InnerClient, subscription::SubscriptionToken};
+use self::subscription::SubscriptionToken;
 use crate::{entity::EntityTopicBuilder, HassMqttOptions};
 use futures::Stream;
 use hass_dyn_error::DynError;
@@ -114,7 +114,7 @@ impl HassMqttClient {
 		err,
 	)]
 	pub async fn new<T: MqttProvider>(options: HassMqttOptions) -> Result<Self, ConnectError> {
-		let (sender, client_id) = InnerClient::spawn::<T>(options)
+		let (sender, client_id) = inner::spawn::<T>(options)
 			.await
 			.map_err(ConnectError::new)?;
 		Ok(Self { sender, client_id })

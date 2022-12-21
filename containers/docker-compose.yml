@@ -1,6 +1,7 @@
 version: "3.9"
 services:
   mqtt:
-    build: ./mosquitto/
+    image: docker.io/emqx/emqx
     ports:
       - "1883:1883"
+      - "18083:18083"

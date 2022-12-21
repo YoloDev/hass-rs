@@ -2,8 +2,10 @@ use async_trait::async_trait;
 use futures::stream::Stream;
 use std::{
 	fmt::{self, Write},
+	future::IntoFuture,
 	path::PathBuf,
 	sync::Arc,
+	time::Duration,
 };
 use tracing::{
 	span::{Entered, EnteredSpan},
@@ -40,6 +42,39 @@ impl From<QosLevel> for i32 {
 	}
 }
 
+#[repr(u8)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum MqttRetainHandling {
+	/// Send retained messages at the time of the subscribe
+	SendRetainedOnSubscribe = 0,
+	/// Send retained messages on subscribe only if subscription is new
+	SendRetainedOnNew = 1,
+	/// Do not send retained messages at all
+	DontSendRetained = 2,
+}
+
+impl fmt::Display for MqttRetainHandling {
+	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+		match self {
+			MqttRetainHandling::SendRetainedOnSubscribe => f.write_char('0'),
+			MqttRetainHandling::SendRetainedOnNew => f.write_char('1'),
+			MqttRetainHandling::DontSendRetained => f.write_char('2'),
+		}
+	}
+}
+
+impl From<MqttRetainHandling> for u8 {
+	fn from(qos: MqttRetainHandling) -> Self {
+		qos as u8
+	}
+}
+
+impl From<MqttRetainHandling> for i32 {
+	fn from(qos: MqttRetainHandling) -> Self {
+		qos as i32
+	}
+}
+
 pub trait MqttProviderCreateError {
 	fn create_message(
 		kind: impl Into<String>,
@@ -64,35 +99,60 @@ pub trait MqttProvider {
 	) -> Result<Self::Client, Self::Error>;
 }
 
-#[async_trait(?Send)]
 pub trait MqttClient: Sized {
 	type Provider: MqttProvider<Client = Self>;
 	type Message: MqttBuildableMessage<Client = Self>;
 	type Messages: Stream<Item = MqttReceivedMessage<Self>>;
-	type PublishError: std::error::Error + Send + Sync + 'static;
-	type SubscribeError: std::error::Error + Send + Sync + 'static;
-	type UnsubscribeError: std::error::Error + Send + Sync + 'static;
-	type DisconnectError: std::error::Error + Send + Sync + 'static;
+	type SubscriptionKey: Send + Sync + 'static;
+	type PublishBuilder<'a>: MqttPublishBuilder + 'a
+	where
+		Self: 'a;
+	type SubscribeBuilder<'a>: MqttSubscribeBuilder<SubscriptionKey = Self::SubscriptionKey> + 'a
+	where
+		Self: 'a;
+	type UnsubscribeBuilder<'a>: MqttUnsubscribeBuilder + 'a
+	where
+		Self: 'a;
+	type DisconnectBuilder<'a>: MqttDisconnectBuilder + 'a
+	where
+		Self: 'a;
 
 	fn client_id(&self) -> Arc<str>;
 
 	fn messages(&self) -> Self::Messages;
 
-	async fn publish(&self, message: Self::Message) -> Result<(), Self::PublishError>;
+	fn publish(&self, message: Self::Message) -> Self::PublishBuilder<'_>;
 
-	async fn subscribe(
-		&self,
-		topic: impl Into<String>,
-		qos: QosLevel,
-	) -> Result<(), Self::SubscribeError>;
+	fn subscribe(&self, topic: impl Into<Arc<str>>, qos: QosLevel) -> Self::SubscribeBuilder<'_>;
 
-	async fn unsubscribe(&self, topic: impl Into<String>) -> Result<(), Self::UnsubscribeError>;
+	fn unsubscribe(&self, key: Self::SubscriptionKey) -> Self::UnsubscribeBuilder<'_>;
 
-	async fn disconnect(
-		&self,
-		timeout: std::time::Duration,
-		publish_last_will: bool,
-	) -> Result<(), Self::DisconnectError>;
+	fn disconnect(&self) -> Self::DisconnectBuilder<'_>;
+}
+
+pub trait MqttPublishBuilder: IntoFuture<Output = Result<(), Self::Error>> {
+	type Error: std::error::Error + Send + Sync + 'static;
+}
+
+pub trait MqttSubscribeBuilder:
+	IntoFuture<Output = Result<Self::SubscriptionKey, Self::Error>>
+{
+	type SubscriptionKey: Send + Sync + 'static;
+	type Error: std::error::Error + Send + Sync + 'static;
+
+	fn no_local(self, on: bool) -> Self;
+	fn retain_handling(self, handling: MqttRetainHandling) -> Self;
+}
+
+pub trait MqttUnsubscribeBuilder: IntoFuture<Output = Result<(), Self::Error>> {
+	type Error: std::error::Error + Send + Sync + 'static;
+}
+
+pub trait MqttDisconnectBuilder: IntoFuture<Output = Result<(), Self::Error>> {
+	type Error: std::error::Error + Send + Sync + 'static;
+
+	fn publish_last_will(self, on: bool) -> Self;
+	fn after(self, timeout: Duration) -> Self;
 }
 
 pub trait MqttMessage {

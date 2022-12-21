@@ -42,8 +42,7 @@ impl ClientCommand for EntityCommand {
 
 	async fn run<T: MqttClient>(
 		&self,
-		client: &mut InnerClient,
-		_mqtt: &T,
+		client: &mut InnerClient<T>,
 	) -> Result<Self::Result, Self::Error> {
 		let topics_config = client
 			.topics
