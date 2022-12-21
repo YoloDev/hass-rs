@@ -1,6 +1,7 @@
 use crate::topics::TopicsConfig;
 use async_trait::async_trait;
 use hass_mqtt_provider::{MqttClient, MqttProvider, MqttProviderCreateError};
+use tracing::{instrument, Level};
 
 pub(crate) struct HassMqttConnection<T>
 where
@@ -13,6 +14,14 @@ where
 
 #[async_trait(?Send)]
 pub(crate) trait MqttProviderExt: MqttProvider {
+	#[instrument(
+		level = Level::DEBUG,
+		name = "MqttProvider::create_client",
+		skip_all,
+		fields(
+			provider.name = %Self::NAME,
+		)
+	)]
 	async fn create_client(
 		options: &crate::HassMqttOptions,
 	) -> Result<HassMqttConnection<Self::Client>, Self::Error> {

@@ -7,11 +7,13 @@ edition = "2021"
 
 [dependencies]
 async-trait = "0.1"
+flume = "0.10"
 futures = { version = "0.3", default-features = false }
 paho-mqtt = { version = "0.11", default-features = false }
 pin-project = "1"
 thiserror = "1"
 tokio = { version = "1", default-features = false, features = ["rt", "net"] }
+tracing = "0.1"
 
 hass-dyn-error = { version = "0.0.0", path = "../dyn-error" }
 hass-mqtt-provider = { version = "0.0.0", path = "../mqtt-provider" }

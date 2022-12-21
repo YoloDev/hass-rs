@@ -3,6 +3,11 @@ use futures::stream::Stream;
 use std::{
 	fmt::{self, Write},
 	path::PathBuf,
+	sync::Arc,
+};
+use tracing::{
+	span::{Entered, EnteredSpan},
+	Span,
 };
 
 #[repr(u8)]
@@ -44,8 +49,10 @@ pub trait MqttProviderCreateError {
 
 #[async_trait(?Send)]
 pub trait MqttProvider {
+	const NAME: &'static str;
+
 	type Client: MqttClient<Message = Self::Message>;
-	type Message: MqttMessage;
+	type Message: MqttBuildableMessage<Client = Self::Client>;
 	type Error: MqttProviderCreateError + std::error::Error + Send + Sync + 'static;
 
 	#[allow(clippy::too_many_arguments)]
@@ -58,13 +65,16 @@ pub trait MqttProvider {
 }
 
 #[async_trait(?Send)]
-pub trait MqttClient {
-	type Message: MqttMessage;
-	type Messages: Stream<Item = Self::Message>;
+pub trait MqttClient: Sized {
+	type Provider: MqttProvider<Client = Self>;
+	type Message: MqttBuildableMessage<Client = Self>;
+	type Messages: Stream<Item = MqttReceivedMessage<Self>>;
 	type PublishError: std::error::Error + Send + Sync + 'static;
 	type SubscribeError: std::error::Error + Send + Sync + 'static;
 	type UnsubscribeError: std::error::Error + Send + Sync + 'static;
 	type DisconnectError: std::error::Error + Send + Sync + 'static;
+
+	fn client_id(&self) -> Arc<str>;
 
 	fn messages(&self) -> Self::Messages;
 
@@ -85,14 +95,81 @@ pub trait MqttClient {
 	) -> Result<(), Self::DisconnectError>;
 }
 
-pub trait MqttMessage: Clone {
-	type Builder: MqttMessageBuilder<Message = Self>;
+pub trait MqttMessage {
+	type Client: MqttClient;
 
-	fn builder() -> Self::Builder;
 	fn topic(&self) -> &str;
 	fn payload(&self) -> &[u8];
 	fn retained(&self) -> bool;
+	fn qos(&self) -> QosLevel;
 }
+
+pub trait MqttBuildableMessage: MqttMessage {
+	type Builder: MqttMessageBuilder<Message = Self>;
+
+	fn builder() -> Self::Builder;
+}
+
+pub struct MqttReceivedMessage<T: MqttClient> {
+	message: T::Message,
+	span: Span,
+}
+
+impl<T: MqttClient> MqttMessage for MqttReceivedMessage<T> {
+	type Client = T;
+
+	#[inline]
+	fn topic(&self) -> &str {
+		MqttMessage::topic(&self.message)
+	}
+
+	#[inline]
+	fn payload(&self) -> &[u8] {
+		MqttMessage::payload(&self.message)
+	}
+
+	#[inline]
+	fn retained(&self) -> bool {
+		MqttMessage::retained(&self.message)
+	}
+
+	#[inline]
+	fn qos(&self) -> QosLevel {
+		MqttMessage::qos(&self.message)
+	}
+}
+
+impl<T: MqttClient> MqttReceivedMessage<T> {
+	pub fn new(message: T::Message, span: Span) -> Self {
+		Self { message, span }
+	}
+
+	pub fn span(&self) -> &Span {
+		&self.span
+	}
+
+	pub fn into_parts(self) -> (T::Message, Span) {
+		(self.message, self.span)
+	}
+
+	pub fn enter(&self) -> Entered {
+		self.span.enter()
+	}
+
+	pub fn entered(self) -> EnteredMessage<T>
+	where
+		Self: Sized,
+	{
+		let (message, span) = self.into_parts();
+		let span = span.entered();
+
+		EnteredMessage {
+			message,
+			_span: span,
+		}
+	}
+}
+
 pub trait MqttMessageBuilder {
 	type Message: MqttMessage;
 	type Error: std::error::Error + Send + Sync + 'static;
@@ -182,4 +259,33 @@ impl MqttOptions {
 pub struct MqttAuthOptions {
 	pub username: String,
 	pub password: String,
+}
+
+pub struct EnteredMessage<T: MqttClient> {
+	message: T::Message,
+	_span: EnteredSpan,
+}
+
+impl<T: MqttClient> MqttMessage for EnteredMessage<T> {
+	type Client = T;
+
+	#[inline]
+	fn topic(&self) -> &str {
+		MqttMessage::topic(&self.message)
+	}
+
+	#[inline]
+	fn payload(&self) -> &[u8] {
+		MqttMessage::payload(&self.message)
+	}
+
+	#[inline]
+	fn retained(&self) -> bool {
+		MqttMessage::retained(&self.message)
+	}
+
+	#[inline]
+	fn qos(&self) -> QosLevel {
+		MqttMessage::qos(&self.message)
+	}
 }

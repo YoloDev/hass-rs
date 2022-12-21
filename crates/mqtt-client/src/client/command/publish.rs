@@ -2,7 +2,7 @@ use super::{ClientCommand, InnerClient};
 use crate::client::QosLevel;
 use async_trait::async_trait;
 use hass_dyn_error::DynError;
-use hass_mqtt_provider::{MqttClient, MqttMessage, MqttMessageBuilder};
+use hass_mqtt_provider::{MqttBuildableMessage, MqttClient, MqttMessageBuilder};
 use std::sync::Arc;
 use thiserror::Error;
 
@@ -44,7 +44,7 @@ impl ClientCommand for PublishCommand {
 		_client: &mut InnerClient,
 		mqtt: &T,
 	) -> Result<Self::Result, Self::Error> {
-		let msg = <T::Message as MqttMessage>::builder()
+		let msg = <T::Message as MqttBuildableMessage>::builder()
 			.topic(&*self.topic)
 			.payload(&*self.payload)
 			.retain(self.retained)

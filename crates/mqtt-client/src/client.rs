@@ -21,6 +21,7 @@ pub struct Message {
 	pub topic: Arc<str>,
 	pub payload: Arc<[u8]>,
 	pub retained: bool,
+	pub span: Span,
 }
 
 impl Message {
@@ -34,6 +35,10 @@ impl Message {
 
 	pub fn retained(&self) -> bool {
 		self.retained
+	}
+
+	pub fn span(&self) -> &Span {
+		&self.span
 	}
 }
 
@@ -99,6 +104,15 @@ impl ConnectError {
 }
 
 impl HassMqttClient {
+	#[instrument(
+		level = Level::DEBUG,
+		name = "HassMqttClient::new",
+		skip_all,
+		fields(
+			provider.name = T::NAME,
+		)
+		err,
+	)]
 	pub async fn new<T: MqttProvider>(options: HassMqttOptions) -> Result<Self, ConnectError> {
 		let (sender, client_id) = InnerClient::spawn::<T>(options)
 			.await

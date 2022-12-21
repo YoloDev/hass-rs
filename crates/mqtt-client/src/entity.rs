@@ -8,7 +8,7 @@ use hass_mqtt_provider::QosLevel;
 use pin_project::pin_project;
 use std::{
 	convert::Infallible,
-	future::{self, IntoFuture, Ready},
+	future::{self, IntoFuture},
 	sync::Arc,
 };
 use thiserror::Error;
