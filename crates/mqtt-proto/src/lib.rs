@@ -14,6 +14,7 @@ pub mod icon;
 pub mod name;
 pub mod payload;
 pub mod qos;
+pub mod retain_handling;
 pub mod state_class;
 pub mod template;
 pub mod topic;
@@ -39,6 +40,8 @@ pub use name::Name;
 pub use payload::Payload;
 #[doc(no_inline)]
 pub use qos::MqttQoS;
+#[doc(no_inline)]
+pub use retain_handling::MqttRetainHandling;
 #[doc(no_inline)]
 pub use state_class::StateClass;
 #[doc(no_inline)]

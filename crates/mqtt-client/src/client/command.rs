@@ -7,6 +7,7 @@ use async_trait::async_trait;
 use hass_mqtt_provider::MqttClient;
 use std::sync::Arc;
 use tokio::sync::oneshot;
+use tracing::{Instrument, Span};
 
 pub(super) use entity::EntityCommand;
 pub(super) use publish::PublishCommand;
@@ -19,8 +20,7 @@ pub(crate) trait ClientCommand {
 
 	async fn run<T: MqttClient>(
 		&self,
-		client: &mut InnerClient,
-		mqtt: &T,
+		client: &mut InnerClient<T>,
 	) -> Result<Self::Result, Self::Error>;
 
 	fn create_error(&self, source: impl std::error::Error + Send + Sync + 'static) -> Self::Error;
@@ -32,7 +32,7 @@ pub(crate) type CommandResultSender<T> = oneshot::Sender<CommandResult<T>>;
 pub(crate) type CommandResultReceiver<T> = oneshot::Receiver<CommandResult<T>>;
 
 pub(crate) trait FromClientCommand<T: ClientCommand>: Sized {
-	fn from_command(command: Arc<T>) -> (Self, CommandResultReceiver<T>);
+	fn from_command(command: Arc<T>, span: Span) -> (Self, CommandResultReceiver<T>);
 }
 
 macro_rules! commands {
@@ -41,38 +41,36 @@ macro_rules! commands {
 	}) => {
 		#[allow(clippy::enum_variant_names)]
 		$vis enum $name {
-			$($variant(Arc<$variant>, CommandResultSender<$variant>),)*
+			$($variant(Arc<$variant>, CommandResultSender<$variant>, Span),)*
 		}
 
 		$(
 			impl FromClientCommand<$variant> for $name {
-				fn from_command(command: Arc<$variant>) -> (Self, CommandResultReceiver<$variant>) {
+				fn from_command(command: Arc<$variant>, span: Span) -> (Self, CommandResultReceiver<$variant>) {
 					let (tx, rx) = oneshot::channel();
 
-					(Self::$variant(command, tx), rx)
+					(Self::$variant(command, tx, span), rx)
 				}
 			}
 		)*
 
 		impl $name {
-			pub(super) fn from_command<T>(command: Arc<T>) -> (Self, CommandResultReceiver<T>)
+			pub(super) fn from_command<T>(command: Arc<T>, span: Span) -> (Self, CommandResultReceiver<T>)
 			where
 				T: ClientCommand,
 				Self: FromClientCommand<T>,
 			{
-				<Self as FromClientCommand<T>>::from_command(command)
+				<Self as FromClientCommand<T>>::from_command(command, span)
 			}
 
 			pub(super) async fn run<T: MqttClient>(
 				self,
-				client: &mut InnerClient,
-				mqtt: &T,
+				client: &mut InnerClient<T>,
 			) {
 				match self {
 					$(
-						Self::$variant(command, tx) => {
-							// TODO: tracing
-							let result = command.run(client, mqtt).await;
+						Self::$variant(command, tx, span) => {
+							let result = command.run(client).instrument(span).await;
 
 							if let Err(_err) = tx.send(result) {
 								// TODO: log

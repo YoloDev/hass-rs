@@ -16,6 +16,15 @@
 		{
 			"type": "lldb",
 			"request": "launch",
+			"name": "Debug mqtt-light-manual-topics",
+			"cargo": {
+				"args": ["build", "--package=mqtt-light-manual-topics"]
+			},
+			"args": []
+		},
+		{
+			"type": "lldb",
+			"request": "launch",
 			"name": "Debug unit tests in library 'hass-mqtt-discovery-macros'",
 			"cargo": {
 				"args": [
