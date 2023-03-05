@@ -21,6 +21,7 @@
 	],
 	"packages": {
 		"crates/dyn-error": {},
+		"crates/metrics": {},
 		"crates/mqtt-client": {},
 		"crates/mqtt-macros": {},
 		"crates/mqtt-provider": {},
