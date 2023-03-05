@@ -53,6 +53,19 @@ pub enum MqttRetainHandling {
 	DontSendRetained = 2,
 }
 
+/// Hints to the MQTT provider what version of the protocol to use.
+/// The provider may choose to ignore this hint.
+#[repr(u8)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+pub enum MqttVersion {
+	/// Default version (let the provider pick)
+	Default = 0,
+	/// Choose a version 3.x client
+	V3 = 1,
+	/// Choose a version 5.x client
+	V5 = 2,
+}
+
 impl fmt::Display for MqttRetainHandling {
 	fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
 		match self {
@@ -268,6 +281,7 @@ pub struct MqttOptions {
 	pub tls: bool,
 	pub auth: Option<MqttAuthOptions>,
 	pub persitence: PathBuf,
+	pub version: MqttVersion,
 }
 
 impl MqttOptions {
@@ -279,6 +293,7 @@ impl MqttOptions {
 			tls: false,
 			auth: None,
 			persitence,
+			version: MqttVersion::Default,
 		}
 	}
 
@@ -291,6 +306,7 @@ impl MqttOptions {
 			tls: true,
 			auth: None,
 			persitence,
+			version: MqttVersion::Default,
 		}
 	}
 
@@ -311,6 +327,11 @@ impl MqttOptions {
 			username: username.into(),
 			password: password.into(),
 		});
+		self
+	}
+
+	pub fn version(&mut self, version: MqttVersion) -> &mut Self {
+		self.version = version;
 		self
 	}
 }

@@ -4,7 +4,8 @@ use hass_dyn_error::DynError;
 use hass_mqtt_provider::{
 	AsMqttOptions, MqttBuildableMessage, MqttClient, MqttDisconnectBuilder, MqttMessage,
 	MqttMessageBuilder, MqttOptions, MqttProvider, MqttProviderCreateError, MqttPublishBuilder,
-	MqttReceivedMessage, MqttRetainHandling, MqttSubscribeBuilder, MqttUnsubscribeBuilder, QosLevel,
+	MqttReceivedMessage, MqttRetainHandling, MqttSubscribeBuilder, MqttUnsubscribeBuilder,
+	MqttVersion, QosLevel,
 };
 use pin_project::pin_project;
 use std::{
@@ -186,7 +187,12 @@ impl MqttProvider for PahoMqtt {
 		let client = paho_mqtt::AsyncClient::new(as_create_options(&options, client_id)?)
 			.map_err(PahoProviderConnectError::client)?;
 
-		let mut builder = paho_mqtt::ConnectOptionsBuilder::new_v5();
+		let mut builder = match &options.version {
+			MqttVersion::Default => paho_mqtt::ConnectOptionsBuilder::new(),
+			MqttVersion::V3 => paho_mqtt::ConnectOptionsBuilder::new_v3(),
+			MqttVersion::V5 => paho_mqtt::ConnectOptionsBuilder::new_v5(),
+		};
+
 		let hosts = lookup_host((&*options.host, options.port))
 			.instrument(
 				span!(Level::DEBUG, "PahoMqtt::lookup_host", host = %options.host, port = options.port),

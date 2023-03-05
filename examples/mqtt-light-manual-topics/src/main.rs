@@ -83,6 +83,7 @@ async fn main() -> error_stack::Result<(), ApplicationError> {
 
 	println!("creating client");
 	let client = HassMqttOptions::new("localhost", "mqtt-light")
+		.mqtt_v5()
 		.node_id("2")
 		.build_paho()
 		.await
