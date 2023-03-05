@@ -85,7 +85,6 @@ impl<T: MqttClient> InnerClient<T> {
 		)
 	)]
 	async fn run(mut self, receiver: flume::Receiver<Command>) {
-		// TODO: don't use the events helper, use select instead
 		let receiver = receiver.into_stream().fuse();
 		let messages = self.client.messages().fuse();
 
@@ -110,6 +109,7 @@ impl<T: MqttClient> InnerClient<T> {
 	}
 
 	async fn handle_unsubscribe(&mut self, tok: RouteId) {
+		// TODO: Trace
 		if let Some((_, Some(key))) = self.router.remove(tok) {
 			// TODO: Log error
 			let _ = self.client.unsubscribe(key).await;
@@ -117,11 +117,13 @@ impl<T: MqttClient> InnerClient<T> {
 	}
 
 	async fn handle_command(&mut self, cmd: Command) {
+		// TODO: Trace
 		cmd.run(self).await
 	}
 
 	async fn handle_message(&mut self, msg: MqttReceivedMessage<T>) {
-		let client_span = Span::current();
+		// TODO: Trace
+		let client_span_id = Span::current().id();
 
 		let topic = msg.topic();
 		let matches = self.router.matches(topic);
@@ -130,7 +132,7 @@ impl<T: MqttClient> InnerClient<T> {
 		}
 
 		let message_span = msg.span().clone();
-		message_span.follows_from(client_span);
+		message_span.follows_from(client_span_id);
 
 		let message = Message {
 			topic: topic.into(),
@@ -163,7 +165,7 @@ impl<T: MqttClient> InnerClient<T> {
 pub(super) async fn spawn<P: MqttProvider>(
 	options: HassMqttOptions,
 ) -> Result<(flume::Sender<Command>, Arc<str>), ConnectError> {
-	let spawn_span = Span::current().id();
+	let spawn_span_id = Span::current().id();
 	let (result_sender, result_receiver) = tokio::sync::oneshot::channel();
 
 	thread::Builder::new()
@@ -177,7 +179,7 @@ pub(super) async fn spawn<P: MqttProvider>(
 					provider.name = %P::NAME,
 					client.id = field::Empty,
 				);
-				span.follows_from(spawn_span);
+				span.follows_from(spawn_span_id);
 				span.entered()
 			};
 

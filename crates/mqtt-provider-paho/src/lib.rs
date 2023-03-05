@@ -20,58 +20,40 @@ use thiserror::Error;
 use tokio::{net::lookup_host, task};
 use tracing::{event, instrument, span, Instrument, Level, Span};
 
-// https://github.com/eclipse/paho.mqtt.rust/issues/182
-trait PahoClientExt {
-	fn set_connected_callback_safe<F>(&self, cb: F)
-	where
-		F: FnMut(&paho_mqtt::AsyncClient) + Send + Sync + 'static;
-
-	fn set_connection_lost_callback_safe<F>(&self, cb: F)
-	where
-		F: FnMut(&paho_mqtt::AsyncClient) + Send + Sync + 'static;
-
-	fn set_disconnected_callback_safe<F>(&self, cb: F)
-	where
-		F: FnMut(&paho_mqtt::AsyncClient, paho_mqtt::Properties, paho_mqtt::ReasonCode)
-			+ Send
-			+ Sync
-			+ 'static;
-
-	fn set_message_callback_safe<F>(&self, cb: F)
-	where
-		F: FnMut(&paho_mqtt::AsyncClient, Option<paho_mqtt::Message>) + Send + Sync + 'static;
-}
-
-impl PahoClientExt for paho_mqtt::AsyncClient {
-	fn set_connected_callback_safe<F>(&self, cb: F)
-	where
-		F: FnMut(&paho_mqtt::AsyncClient) + Send + Sync + 'static,
-	{
-		self.set_connected_callback(cb)
-	}
-
-	fn set_connection_lost_callback_safe<F>(&self, cb: F)
-	where
-		F: FnMut(&paho_mqtt::AsyncClient) + Send + Sync + 'static,
-	{
-		self.set_connection_lost_callback(cb)
-	}
-
-	fn set_disconnected_callback_safe<F>(&self, cb: F)
-	where
-		F: FnMut(&paho_mqtt::AsyncClient, paho_mqtt::Properties, paho_mqtt::ReasonCode)
-			+ Send
-			+ Sync
-			+ 'static,
-	{
-		self.set_disconnected_callback(cb)
-	}
-
-	fn set_message_callback_safe<F>(&self, cb: F)
-	where
-		F: FnMut(&paho_mqtt::AsyncClient, Option<paho_mqtt::Message>) + Send + Sync + 'static,
-	{
-		self.set_message_callback(cb)
+hass_metrics::metrics! {
+	struct Metrics {
+		connected: Counter(
+			"hass.mqtt.provider_paho.connected",
+			"Number of times the client connected to the broker",
+		),
+		connection_lost: Counter(
+			"hass.mqtt.provider_paho.connection_lost",
+			"Number of times the client has lost the connection to the broker",
+		),
+		disconnected: Counter(
+			"hass.mqtt.provider_paho.disconnected",
+			"Number of times the client has disconnected from the broker",
+		),
+		message: Counter(
+			"hass.mqtt.provider_paho.message",
+			"Number of messages received from the broker",
+			("topic": String),
+		),
+		publish: Counter(
+			"hass.mqtt.provider_paho.publish",
+			"Number of messages published to the broker",
+			("topic": String),
+		),
+		subscribe: Counter(
+			"hass.mqtt.provider_paho.subscribe",
+			"Number of subscriptions to topics",
+			("topic": Arc<str>),
+		),
+		unsubscribe: Counter(
+			"hass.mqtt.provider_paho.unsubscribe",
+			"Number of unsubscriptions from topics",
+			("topic": Arc<str>),
+		),
 	}
 }
 
@@ -204,7 +186,7 @@ impl MqttProvider for PahoMqtt {
 		let client = paho_mqtt::AsyncClient::new(as_create_options(&options, client_id)?)
 			.map_err(PahoProviderConnectError::client)?;
 
-		let mut builder = paho_mqtt::ConnectOptionsBuilder::new();
+		let mut builder = paho_mqtt::ConnectOptionsBuilder::new_v5();
 		let hosts = lookup_host((&*options.host, options.port))
 			.instrument(
 				span!(Level::DEBUG, "PahoMqtt::lookup_host", host = %options.host, port = options.port),
@@ -218,8 +200,7 @@ impl MqttProvider for PahoMqtt {
 
 		builder
 			.server_uris(&hosts)
-			.automatic_reconnect(Duration::from_secs(5), Duration::from_secs(60 * 5))
-			.mqtt_version(0);
+			.automatic_reconnect(Duration::from_secs(5), Duration::from_secs(60 * 5));
 
 		#[cfg(feature = "tls")]
 		if options.tls {
@@ -241,6 +222,8 @@ impl MqttProvider for PahoMqtt {
 			let inner = inner.clone();
 			let span = span.clone();
 			move |_: ()| {
+				Metrics::global().connected.add(1);
+
 				let inner = inner.clone();
 				let span = span.clone();
 				let online_message = online_message.clone();
@@ -298,6 +281,7 @@ impl MqttProvider for PahoMqtt {
 				let span = span.clone();
 				let client_id = inner.client.client_id();
 				let mqtt_version = inner.client.mqtt_version();
+				Metrics::global().connection_lost.add(1);
 				async move {
 					event!(
 						parent: &span,
@@ -316,6 +300,7 @@ impl MqttProvider for PahoMqtt {
 				let span = span.clone();
 				let client_id = inner.client.client_id();
 				let mqtt_version = inner.client.mqtt_version();
+				Metrics::global().disconnected.add(1);
 				async move {
 					event!(
 						parent: &span,
@@ -338,6 +323,7 @@ impl MqttProvider for PahoMqtt {
 				let message_sender = message_sender.clone();
 				async move {
 					if let Some(message) = message {
+						Metrics::global().message.add(1, message.topic().to_owned());
 						event!(
 							parent: &span,
 							Level::DEBUG,
@@ -362,8 +348,8 @@ impl MqttProvider for PahoMqtt {
 			}
 		});
 
-		client.set_connected_callback_safe(move |_| connected_callback(()));
-		client.set_connection_lost_callback_safe(move |_| connection_lost_callback(()));
+		client.set_connected_callback(move |_| connected_callback(()));
+		client.set_connection_lost_callback(move |_| connection_lost_callback(()));
 		client.set_disconnected_callback(move |_, _props, reason| disconnected_callback((reason,)));
 		client.set_message_callback(move |_, message| message_callback((message,)));
 
@@ -511,7 +497,10 @@ impl Client {
 		err,
 	)]
 	async fn publish(&self, builder: PublishBuilder<'_>) -> Result<(), paho_mqtt::Error> {
-		self.inner.client.publish(builder.message.message).await
+		let topic = builder.message.topic().to_owned();
+		self.inner.client.publish(builder.message.message).await?;
+		Metrics::global().publish.add(1, topic);
+		Ok(())
 	}
 
 	#[instrument(
@@ -548,6 +537,7 @@ impl Client {
 			}
 		};
 
+		let topic = options.topic.clone();
 		if options.is_empty() {
 			self
 				.inner
@@ -561,8 +551,11 @@ impl Client {
 				None,
 			)
 		}
-		.await
-		.map(|_| key)
+		.await?;
+
+		event!(Level::INFO, mqtt.topic = %topic, "subscribed to MQTT topic");
+		Metrics::global().subscribe.add(1, topic);
+		Ok(key)
 	}
 
 	#[instrument(
@@ -576,6 +569,11 @@ impl Client {
 		err,
 	)]
 	async fn unsubscribe(&self, builder: UnsubscribeBuilder<'_>) -> Result<(), paho_mqtt::Error> {
+		event!(
+			Level::INFO,
+			monotonic_counter.paho.unsubscribe = 1,
+			"unsubscribe to MQTT topic",
+		);
 		let opts = {
 			let mut subscriptions = self.inner.subscriptions.borrow_mut();
 			let (idx, _) = subscriptions
@@ -592,12 +590,12 @@ impl Client {
 			subscriptions.swap_remove(idx)
 		};
 
-		self
-			.inner
-			.client
-			.unsubscribe(opts.topic.as_ref())
-			.await
-			.map(|_| ())
+		let topic = opts.topic.clone();
+		self.inner.client.unsubscribe(opts.topic.as_ref()).await?;
+
+		event!(Level::INFO, mqtt.topic = %topic, "unsubscribed to MQTT topic");
+		Metrics::global().unsubscribe.add(1, topic);
+		Ok(())
 	}
 
 	#[instrument(
