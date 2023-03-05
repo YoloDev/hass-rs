@@ -2,7 +2,7 @@ pub(crate) mod command;
 pub(crate) mod inner;
 pub(crate) mod subscription;
 
-use self::{inner::InnerClient, subscription::SubscriptionToken};
+use self::subscription::SubscriptionToken;
 use crate::{entity::EntityTopicBuilder, HassMqttOptions};
 use futures::Stream;
 use hass_dyn_error::DynError;
@@ -14,12 +14,14 @@ use std::{
 	task::{Context, Poll},
 };
 use thiserror::Error;
+use tracing::{field, instrument, span, Level, Span};
 
 #[derive(Clone)]
 pub struct Message {
 	pub topic: Arc<str>,
 	pub payload: Arc<[u8]>,
 	pub retained: bool,
+	pub span: Span,
 }
 
 impl Message {
@@ -33,6 +35,10 @@ impl Message {
 
 	pub fn retained(&self) -> bool {
 		self.retained
+	}
+
+	pub fn span(&self) -> &Span {
+		&self.span
 	}
 }
 
@@ -56,6 +62,7 @@ impl Stream for Subscription {
 
 #[derive(Clone)]
 pub struct HassMqttClient {
+	client_id: Arc<str>,
 	sender: flume::Sender<command::Command>,
 }
 
@@ -65,8 +72,9 @@ impl HassMqttClient {
 		T: command::ClientCommand,
 		command::Command: command::FromClientCommand<T>,
 	{
+		let span = Span::current();
 		let cmd = Arc::new(cmd);
-		let (msg, receiver) = command::Command::from_command(cmd.clone());
+		let (msg, receiver) = command::Command::from_command(cmd.clone(), span);
 		self
 			.sender
 			.send_async(msg)
@@ -96,11 +104,20 @@ impl ConnectError {
 }
 
 impl HassMqttClient {
+	#[instrument(
+		level = Level::DEBUG,
+		name = "HassMqttClient::new",
+		skip_all,
+		fields(
+			provider.name = T::NAME,
+		)
+		err,
+	)]
 	pub async fn new<T: MqttProvider>(options: HassMqttOptions) -> Result<Self, ConnectError> {
-		let sender = InnerClient::spawn::<T>(options)
+		let (sender, client_id) = inner::spawn::<T>(options)
 			.await
 			.map_err(ConnectError::new)?;
-		Ok(Self { sender })
+		Ok(Self { sender, client_id })
 	}
 }
 
@@ -110,7 +127,12 @@ impl HassMqttClient {
 		domain: impl Into<Arc<str>>,
 		entity_id: impl Into<Arc<str>>,
 	) -> EntityTopicBuilder {
-		EntityTopicBuilder::new(self, domain, entity_id)
+		self._entity(domain.into(), entity_id.into())
+	}
+
+	fn _entity(&self, domain: Arc<str>, entity_id: Arc<str>) -> EntityTopicBuilder {
+		let span = span!(Level::DEBUG, "HassMqttClient::entity", client.id = %self.client_id, entity.domain = %domain, entity.id = %entity_id, entity.topic = field::Empty);
+		EntityTopicBuilder::new(self, domain, entity_id, span)
 	}
 }
 
@@ -125,16 +147,24 @@ pub struct PublishMessageError {
 }
 
 impl HassMqttClient {
+	#[instrument(
+		level = Level::DEBUG,
+		name = "HassMqttClient::publish_message",
+		skip_all,
+		fields(
+			client.id = %self.client_id,
+			message.topic = %topic,
+			message.retained = retained,
+			message.qos = %qos,
+			message.payload.len = payload.len(),
+		))]
 	pub(crate) async fn publish_message(
 		&self,
-		topic: impl Into<Arc<str>>,
-		payload: impl Into<Arc<[u8]>>,
+		topic: Arc<str>,
+		payload: Arc<[u8]>,
 		retained: bool,
 		qos: QosLevel,
 	) -> Result<(), PublishMessageError> {
-		let topic = topic.into();
-		let payload = payload.into();
-
 		self
 			.command(command::publish(topic.clone(), payload, retained, qos))
 			.await
@@ -159,12 +189,20 @@ pub struct SubscribeError {
 }
 
 impl HassMqttClient {
+	#[instrument(
+		level = Level::DEBUG,
+		name = "HassMqttClient::subscribe",
+		skip_all,
+		fields(
+			client.id = %self.client_id,
+			subscription.topic = %topic,
+			subscription.qos,
+		))]
 	pub(crate) async fn subscribe(
 		&self,
-		topic: impl Into<Arc<str>>,
+		topic: Arc<str>,
 		qos: QosLevel,
 	) -> Result<Subscription, SubscribeError> {
-		let topic = topic.into();
 		let result = self
 			.command(command::subscribe(topic.clone(), qos))
 			.await

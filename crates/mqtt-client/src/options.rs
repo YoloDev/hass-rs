@@ -1,6 +1,7 @@
 use crate::topics::{ApplicationName, NodeId};
 use dirs::{cache_dir, state_dir};
 use hass_dyn_error::DynError;
+use hass_mqtt_provider::MqttVersion;
 use std::{
 	fmt,
 	path::{Path, PathBuf},
@@ -92,6 +93,16 @@ impl HassMqttOptions {
 
 	pub fn persistence_file(mut self, file: impl Into<PathBuf>) -> Self {
 		self.mqtt.persistence_file(file);
+		self
+	}
+
+	pub fn mqtt_v5(mut self) -> Self {
+		self.mqtt.version(MqttVersion::V5);
+		self
+	}
+
+	pub fn mqtt_v3(mut self) -> Self {
+		self.mqtt.version(MqttVersion::V3);
 		self
 	}
 }
@@ -192,6 +203,7 @@ pub struct MqttOptions {
 	pub(crate) tls: bool,
 	pub(crate) auth: Option<MqttAuthOptions>,
 	pub(crate) persitence: MqttPersistence,
+	pub(crate) version: MqttVersion,
 }
 
 impl MqttOptions {
@@ -203,6 +215,7 @@ impl MqttOptions {
 			tls: false,
 			auth: None,
 			persitence: MqttPersistence::Default,
+			version: MqttVersion::Default,
 		}
 	}
 
@@ -215,6 +228,7 @@ impl MqttOptions {
 			tls: true,
 			auth: None,
 			persitence: MqttPersistence::Default,
+			version: MqttVersion::Default,
 		}
 	}
 
@@ -245,6 +259,11 @@ impl MqttOptions {
 
 	fn persistence_file(&mut self, file: impl Into<PathBuf>) -> &mut Self {
 		self.persitence = MqttPersistence::File(file.into());
+		self
+	}
+
+	fn version(&mut self, version: MqttVersion) -> &mut Self {
+		self.version = version;
 		self
 	}
 }
@@ -281,6 +300,7 @@ impl TryInto<hass_mqtt_provider::MqttOptions> for HassMqttOptions {
 			.map_err(MqttOptionsError::new)?;
 
 		let mut options = hass_mqtt_provider::MqttOptions::new(self.mqtt.host, persistence);
+		options.version(self.mqtt.version);
 		options.port(self.mqtt.port);
 
 		#[cfg(feature = "tls")]

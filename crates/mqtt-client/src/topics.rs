@@ -1,4 +1,4 @@
-use hass_mqtt_provider::{MqttMessage, MqttMessageBuilder, QosLevel};
+use hass_mqtt_provider::{MqttBuildableMessage, MqttMessageBuilder, QosLevel};
 use slug::slugify;
 use std::{fmt, sync::Arc};
 
@@ -114,15 +114,15 @@ impl TopicsConfig {
 		self.entity_topic(domain, entity_id, "set", name)
 	}
 
-	pub(crate) fn online_message<T: MqttMessage>(
+	pub(crate) fn online_message<T: MqttBuildableMessage>(
 		&self,
-	) -> Result<T, <<T as MqttMessage>::Builder as MqttMessageBuilder>::Error> {
+	) -> Result<T, <<T as MqttBuildableMessage>::Builder as MqttMessageBuilder>::Error> {
 		availability_message(&self.available(), Self::ONLINE_PLAYLOAD)
 	}
 
-	pub(crate) fn offline_message<T: MqttMessage>(
+	pub(crate) fn offline_message<T: MqttBuildableMessage>(
 		&self,
-	) -> Result<T, <<T as MqttMessage>::Builder as MqttMessageBuilder>::Error> {
+	) -> Result<T, <<T as MqttBuildableMessage>::Builder as MqttMessageBuilder>::Error> {
 		availability_message(&self.available(), Self::OFFLINE_PLAYLOAD)
 	}
 }
@@ -169,10 +169,10 @@ impl EntityTopicsConfig {
 	}
 }
 
-fn availability_message<T: MqttMessage>(
+fn availability_message<T: MqttBuildableMessage>(
 	topic: &str,
 	content: &str,
-) -> Result<T, <<T as MqttMessage>::Builder as MqttMessageBuilder>::Error> {
+) -> Result<T, <<T as MqttBuildableMessage>::Builder as MqttMessageBuilder>::Error> {
 	T::builder()
 		.topic(topic)
 		.payload(content)

@@ -8,35 +8,44 @@ use hass_mqtt_provider::QosLevel;
 use pin_project::pin_project;
 use std::{
 	convert::Infallible,
-	future::{self, IntoFuture, Ready},
+	future::{self, IntoFuture},
 	sync::Arc,
 };
 use thiserror::Error;
+use tracing::{instrument, span, Instrument, Level, Span};
 
 pub struct EntityTopicBuilder<'a> {
 	client: &'a HassMqttClient,
 	domain: Arc<str>,
 	entity_id: Arc<str>,
 	topic: Option<Arc<str>>,
+	span: Span,
 }
 
 impl<'a> EntityTopicBuilder<'a> {
 	pub(crate) fn new(
 		client: &'a HassMqttClient,
-		domain: impl Into<Arc<str>>,
-		entity_id: impl Into<Arc<str>>,
+		domain: Arc<str>,
+		entity_id: Arc<str>,
+		span: Span,
 	) -> Self {
 		EntityTopicBuilder {
 			client,
-			domain: domain.into(),
-			entity_id: entity_id.into(),
+			domain,
+			entity_id,
 			topic: None,
+			span,
 		}
 	}
 
 	pub fn with_topic(self, topic: impl Into<Arc<str>>) -> Self {
+		let topic = topic.into();
+		self
+			.span
+			.record("entity.topic", tracing::field::display(&topic));
+
 		EntityTopicBuilder {
-			topic: Some(topic.into()),
+			topic: Some(topic),
 			..self
 		}
 	}
@@ -57,6 +66,7 @@ impl<'a> IntoFuture for EntityTopicBuilder<'a> {
 	type IntoFuture = BoxFuture<'a, Self::Output>;
 
 	fn into_future(self) -> Self::IntoFuture {
+		let span = self.span.clone();
 		async move {
 			let domain = self.domain;
 			let entity_id = self.entity_id;
@@ -77,8 +87,13 @@ impl<'a> IntoFuture for EntityTopicBuilder<'a> {
 					source: DynError::new(source),
 				})?;
 
-			Ok(EntityTopic::new(self.client.clone(), result.topics))
+			Ok(EntityTopic::new(
+				self.client.clone(),
+				result.topics,
+				self.span,
+			))
 		}
+		.instrument(span)
 		.boxed()
 	}
 }
@@ -86,17 +101,29 @@ impl<'a> IntoFuture for EntityTopicBuilder<'a> {
 pub struct EntityTopic {
 	client: HassMqttClient,
 	topics: EntityTopicsConfig,
+	span: Span,
 }
 
 impl EntityTopic {
-	pub(crate) fn new(client: HassMqttClient, topics: EntityTopicsConfig) -> Self {
-		EntityTopic { client, topics }
+	pub(crate) fn new(client: HassMqttClient, topics: EntityTopicsConfig, span: Span) -> Self {
+		EntityTopic {
+			client,
+			topics,
+			span,
+		}
 	}
 
 	pub fn state_topic(&self) -> StateTopicBuilder {
+		let span = span!(
+			Level::DEBUG,
+			"EntityTopic::state_topic",
+			entity.domain = %self.topics.domain,
+			entity.entity_id = %self.topics.entity_id);
+
 		StateTopicBuilder {
 			entity: self,
 			topic: TopicName::Default,
+			span,
 		}
 	}
 }
@@ -114,6 +141,26 @@ impl EntityTopic {
 	pub async fn publish(
 		&self,
 		payload: impl Into<Arc<[u8]>>,
+		retained: bool,
+		qos: QosLevel,
+	) -> Result<(), EntityPublishError> {
+		self._publish(payload.into(), retained, qos).await
+	}
+
+	#[instrument(
+		level = Level::DEBUG,
+		name = "EntityTopic::publish",
+		skip_all,
+		fields(
+			entity.topic,
+			message.retained = retained,
+			message.qos = %qos,
+			message.payload.len = payload.len(),
+		)
+	)]
+	async fn _publish(
+		&self,
+		payload: Arc<[u8]>,
 		retained: bool,
 		qos: QosLevel,
 	) -> Result<(), EntityPublishError> {
@@ -170,6 +217,7 @@ impl TopicName {
 pub struct StateTopicBuilder<'a> {
 	entity: &'a EntityTopic,
 	topic: TopicName,
+	span: Span,
 }
 
 impl<'a> StateTopicBuilder<'a> {
@@ -190,7 +238,7 @@ impl<'a> StateTopicBuilder<'a> {
 
 impl<'a> IntoFuture for StateTopicBuilder<'a> {
 	type Output = Result<StateTopic, Infallible>;
-	type IntoFuture = Ready<Self::Output>;
+	type IntoFuture = BoxFuture<'a, Self::Output>;
 
 	fn into_future(self) -> Self::IntoFuture {
 		let topic = self.topic.get(|s| self.entity.topics.state_topic(s));
@@ -199,7 +247,10 @@ impl<'a> IntoFuture for StateTopicBuilder<'a> {
 			self.entity.topics.domain.clone(),
 			self.entity.topics.domain.clone(),
 			topic,
+			self.span.clone(),
 		)))
+		.instrument(self.span)
+		.boxed()
 	}
 }
 
@@ -234,8 +285,16 @@ impl<'a> IntoFuture for CommandTopicBuilder<'a> {
 	type IntoFuture = BoxFuture<'a, Self::Output>;
 
 	fn into_future(self) -> Self::IntoFuture {
+		let topic = self.topic.get(|s| self.entity.topics.command_topic(s));
+		let span = tracing::info_span!(
+			"EntityTopic::command_topic",
+			entity = %self.entity.topics.entity_id,
+			topic = %topic,
+		);
+		span.follows_from(self.entity.span.id());
+		let span_clone = span.clone();
+
 		async move {
-			let topic = self.topic.get(|s| self.entity.topics.command_topic(s));
 			let subscription = self
 				.entity
 				.client
@@ -248,8 +307,13 @@ impl<'a> IntoFuture for CommandTopicBuilder<'a> {
 					source: DynError::new(source),
 				})?;
 
-			Ok(CommandTopic::new(self.entity.client.clone(), subscription))
+			Ok(CommandTopic::new(
+				self.entity.client.clone(),
+				subscription,
+				span,
+			))
 		}
+		.instrument(span_clone)
 		.boxed()
 	}
 }
@@ -259,6 +323,7 @@ pub struct StateTopic {
 	domain: Arc<str>,
 	entity_id: Arc<str>,
 	topic: Arc<str>,
+	span: Span,
 }
 
 impl<'a> From<&'a StateTopic> for hass_mqtt_proto::Topic<'a> {
@@ -273,12 +338,14 @@ impl StateTopic {
 		domain: Arc<str>,
 		entity_id: Arc<str>,
 		topic: Arc<str>,
+		span: Span,
 	) -> Self {
 		StateTopic {
 			client,
 			domain,
 			entity_id,
 			topic,
+			span,
 		}
 	}
 
@@ -289,6 +356,27 @@ impl StateTopic {
 	pub async fn publish(
 		&self,
 		payload: impl Into<Arc<[u8]>>,
+		retained: bool,
+		qos: QosLevel,
+	) -> Result<(), EntityPublishError> {
+		self._publish(payload.into(), retained, qos).await
+	}
+
+	#[instrument(
+		level = Level::DEBUG,
+		name = "StateTopic::publish",
+		skip_all,
+		fields(
+			state.topic = %self.topic,
+			message.retained = retained,
+			message.qos = %qos,
+			message.payload.len = payload.len(),
+		),
+		follows_from=[self.span.id()]
+	)]
+	async fn _publish(
+		&self,
+		payload: Arc<[u8]>,
 		retained: bool,
 		qos: QosLevel,
 	) -> Result<(), EntityPublishError> {
@@ -309,6 +397,7 @@ pub struct CommandTopic {
 	_client: HassMqttClient,
 	#[pin]
 	subscription: Subscription,
+	span: Span,
 }
 
 impl<'a> From<&'a CommandTopic> for hass_mqtt_proto::Topic<'a> {
@@ -318,10 +407,11 @@ impl<'a> From<&'a CommandTopic> for hass_mqtt_proto::Topic<'a> {
 }
 
 impl CommandTopic {
-	pub(crate) fn new(client: HassMqttClient, subscription: Subscription) -> Self {
+	pub(crate) fn new(client: HassMqttClient, subscription: Subscription, span: Span) -> Self {
 		CommandTopic {
 			_client: client,
 			subscription,
+			span,
 		}
 	}
 

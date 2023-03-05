@@ -1,5 +1,8 @@
 use super::{ClientCommand, InnerClient};
-use crate::client::{subscription::SubscriptionToken, Message, QosLevel};
+use crate::{
+	client::{subscription::SubscriptionToken, Message, QosLevel},
+	router::RouterEntry,
+};
 use async_trait::async_trait;
 use hass_dyn_error::DynError;
 use hass_mqtt_provider::MqttClient;
@@ -38,20 +41,23 @@ impl ClientCommand for SubscribeCommand {
 
 	async fn run<T: MqttClient>(
 		&self,
-		client: &mut InnerClient,
-		mqtt: &T,
+		client: &mut InnerClient<T>,
 	) -> Result<Self::Result, Self::Error> {
 		let (sender, receiver) = flume::unbounded();
-		let route_id = client.router.insert(&self.topic, sender);
+		let route_id = match client.router.entry(self.topic.clone()) {
+			RouterEntry::Occupied(entry) => entry.insert(sender),
+			RouterEntry::Vacant(entry) => {
+				let key = client
+					.client
+					.subscribe(self.topic.clone(), self.qos)
+					.await
+					.map_err(|source| self.create_error(source))?;
+
+				entry.insert(key, sender)
+			}
+		};
+
 		let token = client.subscriptions.insert(route_id);
-
-		// Note: if the subscription fails, the token gets dropped,
-		// which in turn will clean up the route in the router.
-		mqtt
-			.subscribe(&*self.topic, self.qos)
-			.await
-			.map_err(|source| self.create_error(source))?;
-
 		Ok(SubscribeCommandResult { token, receiver })
 	}
 
