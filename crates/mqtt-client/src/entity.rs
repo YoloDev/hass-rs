@@ -5,6 +5,7 @@ use crate::{
 use futures::{future::BoxFuture, FutureExt, Stream};
 use hass_dyn_error::DynError;
 use hass_mqtt_provider::QosLevel;
+use opentelemetry::trace::{SpanContext, TraceContextExt};
 use pin_project::pin_project;
 use std::{
 	convert::Infallible,
@@ -13,6 +14,7 @@ use std::{
 };
 use thiserror::Error;
 use tracing::{instrument, span, Instrument, Level, Span};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub struct EntityTopicBuilder<'a> {
 	client: &'a HassMqttClient,
@@ -66,14 +68,17 @@ impl<'a> IntoFuture for EntityTopicBuilder<'a> {
 	type IntoFuture = BoxFuture<'a, Self::Output>;
 
 	fn into_future(self) -> Self::IntoFuture {
-		let span = self.span.clone();
-		async move {
-			let domain = self.domain;
-			let entity_id = self.entity_id;
-			let topic = self.topic;
+		let EntityTopicBuilder {
+			client,
+			domain,
+			entity_id,
+			topic,
+			span,
+		} = self;
 
-			let result = self
-				.client
+		let span_context = span.context().span().span_context().clone();
+		async move {
+			let result = client
 				.command(crate::client::command::entity(
 					domain.clone(),
 					entity_id.clone(),
@@ -88,9 +93,9 @@ impl<'a> IntoFuture for EntityTopicBuilder<'a> {
 				})?;
 
 			Ok(EntityTopic::new(
-				self.client.clone(),
+				client.clone(),
 				result.topics,
-				self.span,
+				span_context,
 			))
 		}
 		.instrument(span)
@@ -101,15 +106,19 @@ impl<'a> IntoFuture for EntityTopicBuilder<'a> {
 pub struct EntityTopic {
 	client: HassMqttClient,
 	topics: EntityTopicsConfig,
-	span: Span,
+	span_context: SpanContext,
 }
 
 impl EntityTopic {
-	pub(crate) fn new(client: HassMqttClient, topics: EntityTopicsConfig, span: Span) -> Self {
+	pub(crate) fn new(
+		client: HassMqttClient,
+		topics: EntityTopicsConfig,
+		span_context: SpanContext,
+	) -> Self {
 		EntityTopic {
 			client,
 			topics,
-			span,
+			span_context,
 		}
 	}
 
@@ -241,15 +250,22 @@ impl<'a> IntoFuture for StateTopicBuilder<'a> {
 	type IntoFuture = BoxFuture<'a, Self::Output>;
 
 	fn into_future(self) -> Self::IntoFuture {
-		let topic = self.topic.get(|s| self.entity.topics.state_topic(s));
-		future::ready(Ok(StateTopic::new(
-			self.entity.client.clone(),
-			self.entity.topics.domain.clone(),
-			self.entity.topics.domain.clone(),
+		let StateTopicBuilder {
+			entity,
 			topic,
-			self.span.clone(),
+			span,
+		} = self;
+		let span_context = span.context().span().span_context().clone();
+
+		let topic = topic.get(|s| self.entity.topics.state_topic(s));
+		future::ready(Ok(StateTopic::new(
+			entity.client.clone(),
+			entity.topics.domain.clone(),
+			entity.topics.domain.clone(),
+			topic,
+			span_context,
 		)))
-		.instrument(self.span)
+		.instrument(span)
 		.boxed()
 	}
 }
@@ -291,8 +307,9 @@ impl<'a> IntoFuture for CommandTopicBuilder<'a> {
 			entity = %self.entity.topics.entity_id,
 			topic = %topic,
 		);
-		span.follows_from(self.entity.span.id());
-		let span_clone = span.clone();
+		span.add_link(self.entity.span_context.clone());
+
+		let span_context = span.context().span().span_context().clone();
 
 		async move {
 			let subscription = self
@@ -310,10 +327,10 @@ impl<'a> IntoFuture for CommandTopicBuilder<'a> {
 			Ok(CommandTopic::new(
 				self.entity.client.clone(),
 				subscription,
-				span,
+				span_context,
 			))
 		}
-		.instrument(span_clone)
+		.instrument(span)
 		.boxed()
 	}
 }
@@ -323,7 +340,7 @@ pub struct StateTopic {
 	domain: Arc<str>,
 	entity_id: Arc<str>,
 	topic: Arc<str>,
-	span: Span,
+	span_context: SpanContext,
 }
 
 impl<'a> From<&'a StateTopic> for hass_mqtt_proto::Topic<'a> {
@@ -338,14 +355,14 @@ impl StateTopic {
 		domain: Arc<str>,
 		entity_id: Arc<str>,
 		topic: Arc<str>,
-		span: Span,
+		span_context: SpanContext,
 	) -> Self {
 		StateTopic {
 			client,
 			domain,
 			entity_id,
 			topic,
-			span,
+			span_context,
 		}
 	}
 
@@ -372,7 +389,6 @@ impl StateTopic {
 			message.qos = %qos,
 			message.payload.len = payload.len(),
 		),
-		follows_from=[self.span.id()]
 	)]
 	async fn _publish(
 		&self,
@@ -380,6 +396,8 @@ impl StateTopic {
 		retained: bool,
 		qos: QosLevel,
 	) -> Result<(), EntityPublishError> {
+		Span::current().add_link(self.span_context.clone());
+
 		self
 			.client
 			.publish_message(self.topic.clone(), payload, retained, qos)
@@ -397,7 +415,7 @@ pub struct CommandTopic {
 	_client: HassMqttClient,
 	#[pin]
 	subscription: Subscription,
-	span: Span,
+	span_context: SpanContext,
 }
 
 impl<'a> From<&'a CommandTopic> for hass_mqtt_proto::Topic<'a> {
@@ -407,11 +425,15 @@ impl<'a> From<&'a CommandTopic> for hass_mqtt_proto::Topic<'a> {
 }
 
 impl CommandTopic {
-	pub(crate) fn new(client: HassMqttClient, subscription: Subscription, span: Span) -> Self {
+	pub(crate) fn new(
+		client: HassMqttClient,
+		subscription: Subscription,
+		span_context: SpanContext,
+	) -> Self {
 		CommandTopic {
 			_client: client,
 			subscription,
-			span,
+			span_context,
 		}
 	}
 

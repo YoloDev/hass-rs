@@ -9,11 +9,13 @@ edition = "2021"
 async-trait = "0.1"
 flume = "0.10"
 futures = { version = "0.3", default-features = false }
+opentelemetry = "0.18"
 paho-mqtt = { version = "0.12", default-features = false }
 pin-project = "1"
 thiserror = "1"
 tokio = { version = "1", default-features = false, features = ["rt", "net"] }
 tracing = "0.1"
+tracing-opentelemetry = "0.18"
 
 hass-dyn-error = { version = "0.0.0", path = "../dyn-error" }
 hass-metrics = { version = "0.0.0", path = "../metrics" }

@@ -2,13 +2,14 @@ use error_stack::{IntoReport, ResultExt};
 use futures::StreamExt;
 use hass_mqtt_client::{
 	proto::{entity::LightState, Light},
-	HassMqttOptions, Message, QosLevel,
+	HassMqttOptions, QosLevel,
 };
 use opentelemetry::{sdk::Resource, Key};
 use prometheus::{Encoder, TextEncoder};
 use std::time::Duration;
 use thiserror::Error;
 use tokio::{select, time::sleep};
+use tracing::instrument;
 use tracing_subscriber::{prelude::*, Registry};
 use tracing_tree::HierarchicalLayer;
 
@@ -151,7 +152,10 @@ async fn main() -> error_stack::Result<(), ApplicationError> {
 			.change_context(ApplicationError::PublishStateDocument)?;
 
 		select! {
-			Some(cmd) = command_topic.next() => on = parse(cmd)?,
+			Some(cmd) = command_topic.next() => {
+				let _entered = cmd.span().enter();
+				on = parse(cmd.payload())?;
+			},
 			_ = sleep(autoflip_duration) => on = !on,
 			else => break,
 		};
@@ -160,8 +164,9 @@ async fn main() -> error_stack::Result<(), ApplicationError> {
 	Ok(())
 }
 
-fn parse(cmd: Message) -> error_stack::Result<bool, ApplicationError> {
-	let state: LightState = serde_json::from_slice(cmd.payload())
+#[instrument(skip_all)]
+fn parse(payload: &[u8]) -> error_stack::Result<bool, ApplicationError> {
+	let state: LightState = serde_json::from_slice(payload)
 		.into_report()
 		.change_context(ApplicationError::ParseCommand)?;
 
