@@ -542,6 +542,7 @@ dependencies = [
  "hass-mqtt-provider",
  "hass-mqtt-provider-paho",
  "hass-provide-any-probe",
+ "opentelemetry 0.18.0",
  "pin-project",
  "serde",
  "serde_json",
@@ -551,6 +552,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-error",
+ "tracing-opentelemetry",
 ]
 
 [[package]]
@@ -602,11 +604,13 @@ dependencies = [
  "hass-dyn-error",
  "hass-metrics",
  "hass-mqtt-provider",
+ "opentelemetry 0.18.0",
  "paho-mqtt",
  "pin-project",
  "thiserror",
  "tokio",
  "tracing",
+ "tracing-opentelemetry",
 ]
 
 [[package]]

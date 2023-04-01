@@ -7,11 +7,12 @@ use hass_mqtt_provider::{
 	MqttReceivedMessage, MqttRetainHandling, MqttSubscribeBuilder, MqttUnsubscribeBuilder,
 	MqttVersion, QosLevel,
 };
+use opentelemetry::{trace::SpanContext, trace::TraceContextExt};
 use pin_project::pin_project;
 use std::{
 	cell::RefCell,
 	convert::Infallible,
-	future::IntoFuture,
+	future::{ready, IntoFuture},
 	pin::Pin,
 	sync::Arc,
 	task::{Context, Poll},
@@ -20,6 +21,7 @@ use std::{
 use thiserror::Error;
 use tokio::{net::lookup_host, task};
 use tracing::{event, instrument, span, Instrument, Level, Span};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 hass_metrics::metrics! {
 	struct Metrics {
@@ -218,7 +220,7 @@ impl MqttProvider for PahoMqtt {
 			builder.password(auth.password.clone());
 		}
 
-		let span = Span::current();
+		let span_cx = Span::current().context().span().span_context().clone();
 		let (message_sender, message_receiver) = flume::unbounded();
 		let inner = InnerClient::new(client.clone(), message_receiver);
 
@@ -226,19 +228,18 @@ impl MqttProvider for PahoMqtt {
 
 		let mut connected_callback = create_callback({
 			let inner = inner.clone();
-			let span = span.clone();
+			let span_cx = span_cx.clone();
 			move |_: ()| {
 				Metrics::global().connected.add(1);
+				let client_id = inner.client.client_id();
+				let mqtt_version = inner.client.mqtt_version();
+				let span = span!(parent: None, Level::DEBUG, "PahoMqtt::connected", client.id = %client_id, client.mqtt.version = %mqtt_version);
+				span.add_link(span_cx.clone());
 
 				let inner = inner.clone();
-				let span = span.clone();
 				let online_message = online_message.clone();
 				async move {
 					let client = &inner.client;
-					let span = span.clone();
-					let client_id = client.client_id();
-					let mqtt_version = client.mqtt_version();
-
 					let subscriptions = inner.subscriptions.borrow();
 					let subscriptions = &*subscriptions;
 					if !subscriptions.is_empty() {
@@ -256,7 +257,6 @@ impl MqttProvider for PahoMqtt {
 							.await
 						{
 							event!(
-								parent: &span,
 								Level::ERROR,
 								client.id = %client_id,
 								client.mqtt.version = %mqtt_version,
@@ -268,7 +268,6 @@ impl MqttProvider for PahoMqtt {
 
 					if let Err(e) = client.publish(online_message.message).await {
 						event!(
-							parent: &span,
 							Level::ERROR,
 							client.id = %client_id,
 							client.mqtt.version = %mqtt_version,
@@ -277,72 +276,71 @@ impl MqttProvider for PahoMqtt {
 						);
 					}
 				}
+				.instrument(span)
 			}
 		});
 
 		let mut connection_lost_callback = create_callback({
-			let span = span.clone();
+			let span_cx = span_cx.clone();
 			let inner = inner.clone();
 			move |_: ()| {
-				let span = span.clone();
+				Metrics::global().connection_lost.add(1);
+				let span_cx = span_cx.clone();
 				let client_id = inner.client.client_id();
 				let mqtt_version = inner.client.mqtt_version();
-				Metrics::global().connection_lost.add(1);
+				let span = span!(parent: None, Level::DEBUG, "PahoMqtt::connection_lost", client.id = %client_id, client.mqtt.version = %mqtt_version);
+				span.add_link(span_cx);
+
 				async move {
 					event!(
-						parent: &span,
 						Level::WARN,
 						client.id = %client_id,
 						client.mqtt.version = %mqtt_version,
 						"connection lost");
 				}
+				.instrument(span)
 			}
 		});
 
 		let mut disconnected_callback = create_callback({
-			let span = span.clone();
+			let span_cx = span_cx.clone();
 			let inner = inner.clone();
 			move |(reason,): (paho_mqtt::ReasonCode,)| {
-				let span = span.clone();
+				Metrics::global().disconnected.add(1);
+				let span_cx = span_cx.clone();
 				let client_id = inner.client.client_id();
 				let mqtt_version = inner.client.mqtt_version();
-				Metrics::global().disconnected.add(1);
+				let span = span!(parent: None, Level::DEBUG, "PahoMqtt::disconnected", client.id = %client_id, client.mqtt.version = %mqtt_version);
+				span.add_link(span_cx);
+
 				async move {
 					event!(
-						parent: &span,
 						Level::WARN,
 						client.id = %client_id,
 						client.mqtt.version = %mqtt_version,
 						reason = %reason,
 						"disconnected");
 				}
+				.instrument(span)
 			}
 		});
 
 		let mut message_callback = create_callback({
-			let span = span.clone();
+			let span_cx = span_cx.clone();
 			let inner = inner.clone();
 			move |(message,): (Option<paho_mqtt::Message>,)| {
-				let span = span.clone();
+				let span_cx = span_cx.clone();
 				let client_id = inner.client.client_id();
 				let mqtt_version = inner.client.mqtt_version();
 				let message_sender = message_sender.clone();
-				async move {
-					if let Some(message) = message {
-						Metrics::global().message.add(1, message.topic().to_owned());
-						event!(
-							parent: &span,
-							Level::DEBUG,
-							client.id = %client_id,
-							client.mqtt.version = %mqtt_version,
-							message.topic = %message.topic(),
-							message.retained = message.retained(),
-							message.qos = %message.qos(),
-							message.payload.len = message.payload().len(),
-						);
-						if let Err(e) = message_sender.send_async((message, span.clone())).await {
+				if let Some(message) = message {
+					Metrics::global().message.add(1, message.topic().to_owned());
+					let span = span!(parent: None, Level::DEBUG, "PahoMqtt::message", client.id = %client_id, client.mqtt.version = %mqtt_version, message.topic = %message.topic(), message.retained = message.retained(), message.qos = %message.qos(), message.payload.len = message.payload().len());
+					span.add_link(span_cx.clone());
+
+					async move {
+						if let Err(e) = message_sender.send_async((message, span_cx.clone())).await {
 							event!(
-								parent: &span,
 								Level::ERROR,
 								client.id = %client_id,
 								"failed to send message to listeners: {:#}",
@@ -350,6 +348,10 @@ impl MqttProvider for PahoMqtt {
 							);
 						}
 					}
+					.instrument(span)
+					.boxed()
+				} else {
+					ready(()).boxed()
 				}
 			}
 		});
@@ -417,14 +419,14 @@ impl From<&SubscriptionOptions> for paho_mqtt::SubscribeOptions {
 
 struct InnerClient {
 	client: paho_mqtt::AsyncClient,
-	messages: flume::Receiver<(paho_mqtt::Message, Span)>,
+	messages: flume::Receiver<(paho_mqtt::Message, SpanContext)>,
 	subscriptions: RefCell<Vec<SubscriptionOptions>>,
 }
 
 impl InnerClient {
 	fn new(
 		client: paho_mqtt::AsyncClient,
-		messages: flume::Receiver<(paho_mqtt::Message, Span)>,
+		messages: flume::Receiver<(paho_mqtt::Message, SpanContext)>,
 	) -> Arc<Self> {
 		Self {
 			client,
@@ -455,7 +457,7 @@ pub struct MessageStream {
 	client_id: String,
 	mqtt_version: u32,
 	#[pin]
-	inner: flume::r#async::RecvStream<'static, (paho_mqtt::Message, Span)>,
+	inner: flume::r#async::RecvStream<'static, (paho_mqtt::Message, SpanContext)>,
 }
 
 #[derive(Clone)]
@@ -855,7 +857,7 @@ impl Stream for MessageStream {
 
 	fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
 		match self.as_mut().project().inner.poll_next(cx) {
-			Poll::Ready(Some((message, client_span))) => {
+			Poll::Ready(Some((message, client_cx))) => {
 				let span = span!(
 					parent: None,
 					Level::DEBUG,
@@ -867,7 +869,7 @@ impl Stream for MessageStream {
 					message.qos = %message.qos(),
 					message.payload.len = message.payload().len(),
 				);
-				span.follows_from(client_span);
+				span.add_link(client_cx);
 				Poll::Ready(Some(MqttReceivedMessage::new(message.into(), span)))
 			}
 			Poll::Ready(None) => Poll::Ready(None),

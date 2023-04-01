@@ -10,10 +10,12 @@ use hass_dyn_error::DynError;
 use hass_mqtt_provider::{
 	MqttClient, MqttDisconnectBuilder, MqttMessage, MqttProvider, MqttReceivedMessage,
 };
+use opentelemetry::trace::{SpanContext, TraceContextExt};
 use std::{sync::Arc, thread, time::Duration};
 use thiserror::Error;
 use tokio::{select, task::LocalSet};
-use tracing::{field, instrument, span, Level, Span};
+use tracing::{field, instrument, span, Instrument, Level, Span};
+use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 type RouteId = generational_arena::Index;
 
@@ -63,27 +65,20 @@ pub(crate) struct InnerClient<T: MqttClient> {
 	pub(super) topics: TopicsConfig,
 	pub(super) router: Router<T::SubscriptionKey, flume::Sender<Message>>,
 	pub(super) subscriptions: Subscriptions,
+	pub(super) span_context: SpanContext,
 }
 
 impl<T: MqttClient> InnerClient<T> {
-	fn new(client: T, topics: TopicsConfig) -> Self {
+	fn new(client: T, topics: TopicsConfig, span_context: SpanContext) -> Self {
 		InnerClient {
 			client,
 			topics,
 			router: Router::new(),
 			subscriptions: Subscriptions::new(),
+			span_context,
 		}
 	}
 
-	#[instrument(
-		level = Level::DEBUG,
-		name = "InnerClient::run",
-		skip_all,
-		fields(
-			provider.name = %<T::Provider>::NAME,
-			client.id = %self.client.client_id(),
-		)
-	)]
 	async fn run(mut self, receiver: flume::Receiver<Command>) {
 		let receiver = receiver.into_stream().fuse();
 		let messages = self.client.messages().fuse();
@@ -109,7 +104,7 @@ impl<T: MqttClient> InnerClient<T> {
 	}
 
 	async fn handle_unsubscribe(&mut self, tok: RouteId) {
-		// TODO: Trace
+		// TODO: Trace?
 		if let Some((_, Some(key))) = self.router.remove(tok) {
 			// TODO: Log error
 			let _ = self.client.unsubscribe(key).await;
@@ -117,13 +112,13 @@ impl<T: MqttClient> InnerClient<T> {
 	}
 
 	async fn handle_command(&mut self, cmd: Command) {
-		// TODO: Trace
+		// TODO: Trace?
 		cmd.run(self).await
 	}
 
 	async fn handle_message(&mut self, msg: MqttReceivedMessage<T>) {
-		// TODO: Trace
-		let client_span_id = Span::current().id();
+		// TODO: Trace?
+		// let client_span_id = Span::current().id();
 
 		let topic = msg.topic();
 		let matches = self.router.matches(topic);
@@ -132,7 +127,7 @@ impl<T: MqttClient> InnerClient<T> {
 		}
 
 		let message_span = msg.span().clone();
-		message_span.follows_from(client_span_id);
+		message_span.add_link(self.span_context.clone());
 
 		let message = Message {
 			topic: topic.into(),
@@ -165,42 +160,47 @@ impl<T: MqttClient> InnerClient<T> {
 pub(super) async fn spawn<P: MqttProvider>(
 	options: HassMqttOptions,
 ) -> Result<(flume::Sender<Command>, Arc<str>), ConnectError> {
-	let spawn_span_id = Span::current().id();
+	let span = Span::current();
+	let spawn_span_cx = span.context().span().span_context().clone();
 	let (result_sender, result_receiver) = tokio::sync::oneshot::channel();
 
 	thread::Builder::new()
 		.name(format!("mqtt-{}-hass", options.application_name.slug()))
-		.spawn(move || {
-			let span = {
-				let span = span!(
-					parent: None,
-					Level::DEBUG,
-					"InnerClient::thread",
-					provider.name = %P::NAME,
-					client.id = field::Empty,
-				);
-				span.follows_from(spawn_span_id);
-				span.entered()
-			};
+		.spawn({
+			let parent = span;
 
-			let (sender, receiver) = flume::unbounded();
-			let local = LocalSet::new();
+			move || {
+				let span = {
+					let span = span!(
+						parent: parent,
+						Level::DEBUG,
+						"InnerClient::thread_start",
+						provider.name = %P::NAME,
+						client.id = field::Empty,
+					);
+					span.entered()
+				};
 
-			let rt = match tokio::runtime::Builder::new_current_thread()
-				.build()
-				.map_err(ConnectError::create_runtime)
-			{
-				Ok(rt) => rt,
-				Err(e) => {
-					let _ = result_sender.send(Err(e));
-					return;
-				}
-			};
+				let (sender, receiver) = flume::unbounded();
+				let local = LocalSet::new();
 
-			let rt_guard = rt.enter();
-			let local_guard = local.enter();
-			local.block_on(&rt, {
-				let span = &span;
+				let rt = match tokio::runtime::Builder::new_current_thread()
+					.build()
+					.map_err(ConnectError::create_runtime)
+				{
+					Ok(rt) => rt,
+					Err(e) => {
+						let _ = result_sender.send(Err(e));
+						return;
+					}
+				};
+
+				let rt_guard = rt.enter();
+				let local_guard = local.enter();
+
+				let Ok(client) = local.block_on(&rt, {
+				let span = span.exit();
+				let span_clone = span.clone();
 				async move {
 					let HassMqttConnection {
 						topics,
@@ -213,20 +213,27 @@ pub(super) async fn spawn<P: MqttProvider>(
 						Ok(c) => c,
 						Err(e) => {
 							let _ = result_sender.send(Err(e));
-							return;
+							return Err(());
 						}
 					};
 
-					span.record("client.id", &client_id);
-					let client = InnerClient::new(mqtt_client, topics);
+					span_clone.record("client.id", &client_id);
+					let client = InnerClient::new(mqtt_client, topics, spawn_span_cx);
 
 					let _ = result_sender.send(Ok((sender, client_id.into())));
-					client.run(receiver).await;
+					Ok(client)
 				}
-			});
+				.instrument(span)
+			}) else {
+				return;
+			};
 
-			// ensure it lives til this point
-			drop((rt_guard, local_guard, span));
+				// run forever
+				local.block_on(&rt, client.run(receiver));
+
+				// ensure it lives til this point
+				drop((rt_guard, local_guard));
+			}
 		})
 		.map_err(ConnectError::spawn_thread)?;
 
