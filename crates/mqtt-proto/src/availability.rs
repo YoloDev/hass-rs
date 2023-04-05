@@ -5,23 +5,24 @@ use crate::{
 	validation::ValidateContextExt,
 };
 use semval::{context::Context, Validate, ValidationResult};
-use serde::{Deserialize, Serialize};
 
 /// When availability is configured, this controls the conditions needed to set the entity to available.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "ser", derive(serde::Serialize))]
+#[cfg_attr(feature = "de", derive(serde::Deserialize))]
 pub enum AvailabilityMode {
 	/// If set to all, `payload_available` must be received on all configured availability topics before the entity is marked as online.
-	#[serde(rename = "all")]
+	#[cfg_attr(any(feature = "ser", feature = "de"), serde(rename = "all"))]
 	All,
 
 	/// If set to any, `payload_available` must be received on at least one configured availability topic before the entity is marked as online.
-	#[serde(rename = "any")]
+	#[cfg_attr(any(feature = "ser", feature = "de"), serde(rename = "any"))]
 	Any,
 
 	/// If set to latest, the last `payload_available` or `payload_not_available` received on any configured availability topic controls the availability.
 	///
 	/// This is the default mode if not specified.
-	#[serde(rename = "latest")]
+	#[cfg_attr(any(feature = "ser", feature = "de"), serde(rename = "latest"))]
 	Latest,
 }
 
@@ -39,29 +40,40 @@ impl Default for AvailabilityMode {
 	}
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "ser", derive(serde::Serialize))]
+#[cfg_attr(feature = "de", derive(serde::Deserialize))]
 pub struct Availability<'a> {
 	/// An MQTT topic subscribed to receive availability (online/offline) updates.
-	#[serde(borrow)]
+	#[cfg_attr(any(feature = "ser", feature = "de"), serde(borrow))]
 	pub topic: Topic<'a>,
 
 	/// The payload that represents the available state.
 	///
 	/// The default (used if `None`) is `online`.
-	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "Option::is_none")
+	)]
 	pub payload_available: Option<Payload<'a>>,
 
 	/// The payload that represents the unavailable state.
 	///
 	/// The default (used if `None`) is `offline`.
-	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "Option::is_none")
+	)]
 	pub payload_not_available: Option<Payload<'a>>,
 
 	/// Defines a template to extract device’s availability from the topic.
 	///
 	/// To determine the devices’s availability result of this template
 	/// will be compared to payload_available and payload_not_available.
-	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "Option::is_none")
+	)]
 	pub value_template: Option<Template<'a>>,
 }
 
@@ -119,19 +131,23 @@ impl<'a> Validate for Availability<'a> {
 	}
 }
 
+#[cfg(feature = "alloc")]
+#[cfg(feature = "ser")]
+#[cfg(feature = "de")]
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use crate::string::HassStr;
+	use alloc::vec::Vec;
 	use assert_matches::assert_matches;
 	use nameof::{name_of, name_of_type};
 	use serde_test::{assert_tokens, Token};
-	use std::borrow::Cow;
 
 	#[test]
 	fn no_payloads() {
 		assert_tokens(
 			&Availability {
-				topic: Topic(Cow::Borrowed("the/topic")),
+				topic: Topic::from("the/topic"),
 				payload_available: None,
 				payload_not_available: None,
 				value_template: None,
@@ -152,10 +168,10 @@ mod tests {
 	fn with_payloads() {
 		assert_tokens(
 			&Availability {
-				topic: Topic(Cow::Borrowed("the/topic")),
-				payload_available: Some(Payload(Cow::Borrowed("available"))),
-				payload_not_available: Some(Payload(Cow::Borrowed("not_available"))),
-				value_template: Some(Template(Cow::Borrowed("{{value}}"))),
+				topic: Topic::from("the/topic"),
+				payload_available: Some(Payload::from("available")),
+				payload_not_available: Some(Payload::from("not_available")),
+				value_template: Some(Template::from("{{value}}")),
 			},
 			&[
 				Token::Struct {
@@ -182,7 +198,7 @@ mod tests {
 	fn deserialize_json_borrows() {
 		let json = r##"{"topic":"the/topic"}"##;
 		let availability: Availability = serde_json::from_str(json).expect("should parse");
-		assert_matches!(availability.topic, Topic(Cow::Borrowed(_)));
+		assert_matches!(availability.topic, Topic(HassStr::Borrowed(_)));
 	}
 
 	#[test]

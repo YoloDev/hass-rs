@@ -1,8 +1,6 @@
-use serde_repr::{Deserialize_repr, Serialize_repr};
-
-#[derive(
-	Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize_repr, Deserialize_repr,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "ser", derive(serde_repr::Serialize_repr))]
+#[cfg_attr(feature = "de", derive(serde_repr::Deserialize_repr))]
 #[repr(u8)]
 pub enum MqttQoS {
 	AtMostOnce = 0,
@@ -24,6 +22,7 @@ impl MqttQoS {
 }
 
 #[cfg(test)]
+#[cfg(all(feature = "ser", feature = "de"))]
 mod tests {
 	use super::*;
 	use serde_test::{assert_tokens, Token};

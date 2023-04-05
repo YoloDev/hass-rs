@@ -1,5 +1,5 @@
+use core::fmt;
 use semval::{Invalidity, Validate};
-use std::fmt;
 
 #[cfg(feature = "spantrace")]
 use tracing_error::SpanTrace;

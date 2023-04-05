@@ -1,6 +1,6 @@
 use semval::{context::Context, Validate, ValidationResult};
 
-pub use crate::string_wrappers::Template;
+pub use crate::string::Template;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TemplateInvalidity {
@@ -17,9 +17,11 @@ impl<'a> Validate for Template<'a> {
 	}
 }
 
+#[cfg(feature = "alloc")]
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use alloc::vec::Vec;
 
 	#[test]
 	fn empty_payload_is_invalid() {

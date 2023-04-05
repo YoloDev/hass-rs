@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-
 /// Classification of a non-primary entity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "ser", derive(serde::Serialize))]
+#[cfg_attr(feature = "de", derive(serde::Deserialize))]
 pub enum StateClass {
 	/// Default - unspecified state class.
 	None,
@@ -14,7 +14,7 @@ pub enum StateClass {
 	/// energy consumption or anything else that doesn't include the _current_
 	/// measurement. For supported sensors, statistics of hourly min, max and
 	/// average sensor readings is updated every 5 minutes.
-	#[serde(rename = "measurement")]
+	#[cfg_attr(any(feature = "ser", feature = "de"), serde(rename = "measurement"))]
 	Measurement,
 
 	/// The state represents a total amount that can both increase and decrease,
@@ -24,7 +24,7 @@ pub enum StateClass {
 	/// is interesting instead of the accumulated growth or decline, for example
 	/// remaining battery capacity or CPU load; in such cases state class
 	/// `measurement` should be used instead.
-	#[serde(rename = "total")]
+	#[cfg_attr(any(feature = "ser", feature = "de"), serde(rename = "total"))]
 	Total,
 
 	/// Similar to [Total][StateClass::Total], with the restriction that the state represents a
@@ -32,7 +32,10 @@ pub enum StateClass {
 	/// gas, weekly water consumption or lifetime energy consumption. Statistics
 	/// of the accumulated growth of the sensor's value since it was first added
 	/// is updated every 5 minutes.
-	#[serde(rename = "total_increasing")]
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(rename = "total_increasing")
+	)]
 	TotalIncreasing,
 }
 

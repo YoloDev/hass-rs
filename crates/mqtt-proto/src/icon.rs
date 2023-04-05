@@ -1,6 +1,6 @@
 use semval::{context::Context, Validate, ValidationResult};
 
-pub use crate::string_wrappers::Icon;
+pub use crate::string::Icon;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum IconInvalidity {
@@ -17,9 +17,11 @@ impl<'a> Validate for Icon<'a> {
 	}
 }
 
+#[cfg(feature = "alloc")]
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use alloc::vec::Vec;
 
 	#[test]
 	fn empty_payload_is_invalid() {
