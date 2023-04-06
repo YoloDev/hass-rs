@@ -1,5 +1,5 @@
 use super::DocumentStruct;
-use crate::args::Args;
+use crate::{args::Args, util::CfgExt};
 use darling::ToTokens;
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -17,20 +17,17 @@ impl<'a> ToTokens for Document<'a> {
 			let ident = &f.ident;
 			let docs = &f.docs;
 			let attrs = &f.attrs;
+			let serde = f.serde.iter().map(|s| s.cfg(quote!(feature = "de")));
 			let ty = &f.ty;
 			quote! {
 				#(#docs)*
+				#(#serde)*
 				#(#attrs)*
 				pub #ident: #ty
 			}
 		});
 
-		let mut derives = vec![
-			quote!(Debug),
-			quote!(Clone),
-			quote!(PartialEq),
-			quote!(::serde::Deserialize),
-		];
+		let mut derives = vec![quote!(Debug), quote!(Clone), quote!(PartialEq)];
 		if self.1.impl_eq {
 			derives.push(quote!(Eq));
 		}
@@ -39,6 +36,7 @@ impl<'a> ToTokens for Document<'a> {
 			#(#docs)*
 			#(#attrs)*
 			#[derive(#(#derives,)*)]
+			#[cfg_attr(feature = "de", derive(serde::Deserialize))]
 			#vis struct #ident #generics {
 				#(#fields,)*
 			}

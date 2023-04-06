@@ -1,8 +1,7 @@
-use crate::{topic::Topic, validation::Validator};
+use crate::{topic::Topic, validation::Validator, HassItems, HassStr};
 use enumset::{EnumSet, EnumSetType};
 use hass_mqtt_macros::{entity_document, state_document};
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 /// The mqtt light platform lets you control your MQTT enabled lights.
 ///
@@ -36,8 +35,8 @@ pub struct Light<'a> {
 	pub effect: Option<bool>,
 
 	/// The list of effects the light supports.
-	#[serde(borrow, default, skip_serializing_if = "<[Cow<str>]>::is_empty")]
-	pub effect_list: Cow<'a, [Cow<'a, str>]>,
+	#[serde(borrow, default, skip_serializing_if = "<[_]>::is_empty")]
+	pub effect_list: HassItems<'a, HassStr<'a>>,
 
 	/// The duration, in seconds, of a “long” flash.
 	/// Defaults to `10`.
@@ -260,7 +259,7 @@ pub struct LightState<'a> {
 
 	/// Current light effect.
 	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub effect: Option<Cow<'a, str>>,
+	pub effect: Option<HassStr<'a>>,
 
 	/// Current light state.
 	pub state: OnOff,

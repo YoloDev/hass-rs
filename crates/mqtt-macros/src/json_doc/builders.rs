@@ -55,7 +55,7 @@ impl<'a> ToTokens for Builders<'a> {
 						let unset_ident = format_ident!("unset_{}", ident, span = Span::call_site());
 						quote! {
 							#(#docs)*
-							pub fn #ident(mut self, #ident: impl ::std::convert::Into< #inner >) -> Self {
+							pub fn #ident(mut self, #ident: impl ::core::convert::Into< #inner >) -> Self {
 								self.#ident = Some(#ident.into());
 								self
 							}
@@ -69,7 +69,7 @@ impl<'a> ToTokens for Builders<'a> {
 					} else {
 						quote! {
 							#(#docs)*
-							pub fn #ident(mut self, #ident: impl ::std::convert::Into< #ty >) -> Self {
+							pub fn #ident(mut self, #ident: impl ::core::convert::Into< #ty >) -> Self {
 								self.#ident = #ident.into();
 								self
 							}

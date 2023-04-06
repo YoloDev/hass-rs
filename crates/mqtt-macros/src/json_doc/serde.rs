@@ -24,9 +24,11 @@ impl<'a> ToTokens for SerdeImpl<'a> {
 		let proxy_fields = self.0.fields.iter().map(|f| {
 			let ident = format_ident!("{}", &f.ident, span = Span::call_site());
 			let attrs = &f.attrs;
+			let serde = &f.serde;
 			let ty = f.ty.make_lifetimes(&proxy_inner_lifetime.lifetime);
 			quote! {
 				#(#attrs)*
+				#(#serde)*
 				#ident: & #proxy_outer_lifetime #ty
 			}
 		});
@@ -74,7 +76,8 @@ impl<'a> ToTokens for SerdeImpl<'a> {
 
 		tokens.extend(quote! {
       impl #generics crate::Document for #ident #generics {
-        fn serialize_validated<S>(validated: ::semval::Validated::<& #ident #generics>, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+				#[cfg(feature = "ser")]
+        fn serialize_validated<S>(validated: ::semval::Validated::<& #ident #generics>, serializer: S) -> ::core::result::Result<S::Ok, S::Error>
         where
           S: ::serde::Serializer,
         {
@@ -99,13 +102,14 @@ impl<'a> ToTokens for SerdeImpl<'a> {
         }
       }
 
+			#[cfg(feature = "ser")]
       impl #generics ::serde::Serialize for #ident #generics {
         #[inline]
-        fn serialize<S>(&self, serializer: S) -> ::std::result::Result<S::Ok, S::Error>
+        fn serialize<S>(&self, serializer: S) -> ::core::result::Result<S::Ok, S::Error>
         where
           S: ::serde::Serializer,
         {
-          crate::Document::serialize(self, serializer)
+          <Self as crate::Document>::serialize(self, serializer)
         }
       }
     });

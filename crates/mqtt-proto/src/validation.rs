@@ -10,6 +10,8 @@ use std::backtrace::Backtrace;
 #[cfg(provide_any)]
 use std::any::{Demand, Provider};
 
+use crate::HassItems;
+
 #[derive(Debug)]
 pub struct ValidationError<I: Invalidity + Send + Sync> {
 	invalidity: I,
@@ -184,5 +186,14 @@ where
 			.0
 			.validate_value(self.1, semval::context::Context::new())
 			.into_result()
+	}
+}
+
+impl<'a, T: Validate> Validate for HassItems<'a, T> {
+	type Invalidity = <[T] as Validate>::Invalidity;
+
+	#[inline]
+	fn validate(&self) -> semval::ValidationResult<Self::Invalidity> {
+		self.as_ref().validate()
 	}
 }

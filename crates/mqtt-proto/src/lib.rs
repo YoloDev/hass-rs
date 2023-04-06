@@ -4,7 +4,7 @@
 #[cfg(feature = "alloc")]
 extern crate alloc;
 
-// pub(crate) mod document;
+pub(crate) mod document;
 pub(crate) mod list;
 pub(crate) mod string;
 pub(crate) mod validation;
@@ -13,7 +13,7 @@ pub mod availability;
 pub mod device;
 pub mod device_class;
 pub mod device_tracker_source_type;
-// pub mod entity;
+pub mod entity;
 pub mod entity_category;
 pub mod icon;
 pub mod name;
@@ -56,8 +56,8 @@ pub use topic::Topic;
 #[doc(no_inline)]
 pub use unique_id::UniqueId;
 
-// #[doc(inline)]
-// pub use document::Document;
+#[doc(inline)]
+pub use document::Document;
 
 #[doc(inline)]
 pub use list::HassItems;

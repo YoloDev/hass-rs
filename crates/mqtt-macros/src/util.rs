@@ -1,9 +1,22 @@
 use proc_macro2::Span;
+use quote::quote;
 use std::{borrow::Cow, mem};
 use syn::{
-	Constraint, GenericArgument, Lifetime, Path, PathArguments, PathSegment, QSelf, Type, TypeArray,
-	TypeGroup, TypeParamBound, TypeParen, TypePath, TypeReference, TypeSlice, TypeTuple,
+	Attribute, Constraint, GenericArgument, Lifetime, Path, PathArguments, PathSegment, QSelf, Type,
+	TypeArray, TypeGroup, TypeParamBound, TypeParen, TypePath, TypeReference, TypeSlice, TypeTuple,
 };
+
+pub trait CfgExt {
+	fn cfg(&self, cfg: impl quote::ToTokens) -> proc_macro2::TokenStream;
+}
+
+impl CfgExt for Attribute {
+	fn cfg(&self, cfg: impl quote::ToTokens) -> proc_macro2::TokenStream {
+		let path = &self.path;
+		let tokens = &self.tokens;
+		quote!(#[cfg_attr(#cfg, #path #tokens)])
+	}
+}
 
 pub(crate) trait Prepend {
 	fn prepend(&mut self, items: Self);
@@ -25,13 +38,6 @@ impl Prepend for syn::FieldsNamed {
 		self.named.extend(items);
 	}
 }
-
-// impl<T> Prepend for Vec<T> {
-// 	fn prepend(&mut self, mut items: Self) {
-// 		mem::swap(self, &mut items);
-// 		self.append(&mut items);
-// 	}
-// }
 
 pub(crate) trait PathExt {
 	fn match_path(&self, segments: &[&str]) -> Option<&PathArguments>;
