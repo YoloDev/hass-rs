@@ -51,6 +51,7 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Configure sccache
+        if: github.event_name == 'push' && github.repository == 'YoloDev/hass-rs'
         run: |
           echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
           echo "CARGO_INCREMENTAL=0" >> $GITHUB_ENV
