@@ -1,57 +1,89 @@
+#[cfg(any(feature = "ser", feature = "de"))]
 mod serde;
 
 use crate::{
 	name::{Name, NameInvalidity},
 	validation::ValidateContextExt,
+	HassItems, HassStr,
 };
-use ::serde::{Deserialize, Serialize};
 use semval::{context::Context, Validate, ValidationResult};
-use std::borrow::Cow;
 
-#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "ser", derive(::serde::Serialize))]
+#[cfg_attr(feature = "de", derive(::serde::Deserialize))]
 pub struct Device<'a> {
 	/// A list of connections of the device to the outside world as a list of tuples [connection_type, connection_identifier].
 	/// For example the MAC address of a network interface: "connections": [["mac", "02:5b:26:a8:dc:12"]].
-	#[serde(borrow, default, skip_serializing_if = "<[ConnectionInfo]>::is_empty")]
-	pub connections: Cow<'a, [ConnectionInfo<'a>]>,
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "<[_]>::is_empty")
+	)]
+	pub connections: HassItems<'a, ConnectionInfo<'a>>,
 
 	/// A list of IDs that uniquely identify the device. For example a serial number.
-	#[serde(borrow, default, skip_serializing_if = "<[Cow<str>]>::is_empty")]
-	pub identifiers: Cow<'a, [Cow<'a, str>]>,
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "<[_]>::is_empty")
+	)]
+	pub identifiers: HassItems<'a, HassStr<'a>>,
 
 	/// The manufacturer of the device.
-	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-	pub manufacturer: Option<Cow<'a, str>>,
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "Option::is_none")
+	)]
+	pub manufacturer: Option<HassStr<'a>>,
 
 	/// The model of the device.
-	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-	pub model: Option<Cow<'a, str>>,
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "Option::is_none")
+	)]
+	pub model: Option<HassStr<'a>>,
 
-	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "Option::is_none")
+	)]
 	pub name: Option<Name<'a>>,
 
 	/// Suggest an area if the device isn’t in one yet.
-	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-	pub suggested_area: Option<Cow<'a, str>>,
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "Option::is_none")
+	)]
+	pub suggested_area: Option<HassStr<'a>>,
 
 	/// The firmware version of the device.
-	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-	pub sw_version: Option<Cow<'a, str>>,
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "Option::is_none")
+	)]
+	pub sw_version: Option<HassStr<'a>>,
 
 	/// The hardware version of the device.
-	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-	pub hw_version: Option<Cow<'a, str>>,
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "Option::is_none")
+	)]
+	pub hw_version: Option<HassStr<'a>>,
 
 	/// Identifier of a device that routes messages between this device and Home Assistant.
 	/// Examples of such devices are hubs, or parent devices of a sub-device. This is used
 	/// to show device topology in Home Assistant.
-	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-	pub via_device: Option<Cow<'a, str>>,
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "Option::is_none")
+	)]
+	pub via_device: Option<HassStr<'a>>,
 
 	/// A link to the webpage that can manage the configuration of this device.
 	/// Can be either an HTTP or HTTPS link.
-	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-	pub configuration_url: Option<Cow<'a, str>>,
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(borrow, default, skip_serializing_if = "Option::is_none")
+	)]
+	pub configuration_url: Option<HassStr<'a>>,
 }
 
 impl<'a> Device<'a> {
@@ -89,10 +121,10 @@ impl<'a> Validate for Device<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ConnectionInfo<'a> {
 	/// Connection type. For example `mac` for a mac-addresses.
-	pub type_name: Cow<'a, str>,
+	pub type_name: HassStr<'a>,
 
 	/// Connection value. For instance `02:5b:26:a8:dc:12` for a mac-address.
-	pub value: Cow<'a, str>,
+	pub value: HassStr<'a>,
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -115,6 +147,7 @@ impl<'a> Validate for ConnectionInfo<'a> {
 	}
 }
 
+#[cfg(all(feature = "ser", feature = "de"))]
 #[cfg(test)]
 mod tests {
 	use super::*;
@@ -126,8 +159,8 @@ mod tests {
 	fn connection_info_serde() {
 		assert_tokens(
 			&ConnectionInfo {
-				type_name: Cow::Borrowed("ty"),
-				value: Cow::Borrowed("val"),
+				type_name: HassStr::Borrowed("ty"),
+				value: HassStr::Borrowed("val"),
 			},
 			&[
 				Token::TupleStruct {
@@ -145,16 +178,16 @@ mod tests {
 	fn connection_info_borrows() {
 		let json = r#"["ty","val"]"#;
 		let connection_info: ConnectionInfo = serde_json::from_str(json).expect("should parse");
-		assert_matches!(connection_info.type_name, Cow::Borrowed(_));
-		assert_matches!(connection_info.value, Cow::Borrowed(_));
+		assert_matches!(connection_info.type_name, HassStr::Borrowed(_));
+		assert_matches!(connection_info.value, HassStr::Borrowed(_));
 	}
 
 	#[test]
 	fn empty_device_serde() {
 		assert_tokens(
 			&Device {
-				connections: Cow::Borrowed(&[]),
-				identifiers: Cow::Borrowed(&[]),
+				connections: HassItems::Borrowed(&[]),
+				identifiers: HassItems::Borrowed(&[]),
 				manufacturer: None,
 				model: None,
 				name: None,
@@ -178,25 +211,25 @@ mod tests {
 	fn device_serde() {
 		assert_tokens(
 			&Device {
-				connections: Cow::Borrowed(&[
+				connections: HassItems::Borrowed(&[
 					ConnectionInfo {
-						type_name: Cow::Borrowed("type1"),
-						value: Cow::Borrowed("val1"),
+						type_name: HassStr::Borrowed("type1"),
+						value: HassStr::Borrowed("val1"),
 					},
 					ConnectionInfo {
-						type_name: Cow::Borrowed("type2"),
-						value: Cow::Borrowed("val2"),
+						type_name: HassStr::Borrowed("type2"),
+						value: HassStr::Borrowed("val2"),
 					},
 				]),
-				identifiers: Cow::Borrowed(&[Cow::Borrowed("id1"), Cow::Borrowed("id2")]),
-				manufacturer: Some(Cow::Borrowed("mf")),
-				model: Some(Cow::Borrowed("md")),
-				name: Some(Name(Cow::Borrowed("na"))),
-				suggested_area: Some(Cow::Borrowed("ar")),
-				sw_version: Some(Cow::Borrowed("sw")),
-				hw_version: Some(Cow::Borrowed("hw")),
-				via_device: Some(Cow::Borrowed("vd")),
-				configuration_url: Some(Cow::Borrowed("cu")),
+				identifiers: HassItems::Borrowed(&[HassStr::Borrowed("id1"), HassStr::Borrowed("id2")]),
+				manufacturer: Some(HassStr::Borrowed("mf")),
+				model: Some(HassStr::Borrowed("md")),
+				name: Some(Name::from("na")),
+				suggested_area: Some(HassStr::Borrowed("ar")),
+				sw_version: Some(HassStr::Borrowed("sw")),
+				hw_version: Some(HassStr::Borrowed("hw")),
+				via_device: Some(HassStr::Borrowed("vd")),
+				configuration_url: Some(HassStr::Borrowed("cu")),
 			},
 			&[
 				Token::Struct {

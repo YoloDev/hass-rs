@@ -134,6 +134,7 @@ pub(crate) struct DocumentField {
 	variant_ident: syn::Ident,
 	ty: syn::Type,
 	docs: Vec<syn::Attribute>,
+	serde: Vec<syn::Attribute>,
 	attrs: Vec<syn::Attribute>,
 	validate: FieldValidation,
 	builder: Builder,
@@ -198,13 +199,21 @@ impl TryFrom<input::DocumentFieldInput> for DocumentField {
 		}
 
 		let ty = value.ty;
-		let (docs, attrs): (Vec<_>, Vec<_>) = value
-			.attrs
-			.into_iter()
-			.partition(|attr| attr.path.is_ident("doc"));
+		let mut docs = Vec::with_capacity(value.attrs.len());
+		let mut serde = Vec::with_capacity(2);
+		let mut attrs = Vec::with_capacity(value.attrs.len());
+		for attr in value.attrs {
+			if attr.path.is_ident("doc") {
+				docs.push(attr);
+			} else if attr.path.is_ident("serde") {
+				serde.push(attr);
+			} else {
+				attrs.push(attr);
+			}
+		}
 		let validate = value.validate.into();
 		let builder = value.builder.into();
-		let has_default = attrs
+		let has_default = serde
 			.iter()
 			.any(|attr| attr.path.is_ident("serde") && attr.tokens.to_string().contains("default"));
 		let required = !has_default;
@@ -224,6 +233,7 @@ impl TryFrom<input::DocumentFieldInput> for DocumentField {
 			ty,
 			attrs,
 			docs,
+			serde,
 			validate,
 			builder,
 			required,

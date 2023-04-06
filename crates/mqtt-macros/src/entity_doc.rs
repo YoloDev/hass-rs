@@ -9,7 +9,7 @@ fn common_fields() -> FieldsNamed {
 		/// A list of MQTT topics subscribed to receive availability (online/offline) updates.
 		#[serde(borrow, default, skip_serializing_if = "<[crate::availability::Availability]>::is_empty")]
 		#[entity(validate)]
-		pub availability: ::std::borrow::Cow<'a, [crate::availability::Availability<'a>]>,
+		pub availability: crate::HassItems<'a, crate::availability::Availability<'a>>,
 
 		/// When `availability` is configured, this controls the conditions needed
 		/// to set the entity to `available`.
@@ -31,7 +31,7 @@ fn common_fields() -> FieldsNamed {
 		/// The encoding of the payloads received and published messages. Set to "" to disable decoding of incoming payload.
 		/// Defaults to `"utf-8"`.
 		#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-		pub encoding: Option<::std::borrow::Cow<'a, str>>,
+		pub encoding: Option<crate::HassStr<'a>>,
 
 		/// The [category] of the entity.
 		///
@@ -69,7 +69,7 @@ fn common_fields() -> FieldsNamed {
 
 		/// Used instead of `name` for automatic generation of `entity_id`.
 		#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-		pub object_id: Option<::std::borrow::Cow<'a, str>>,
+		pub object_id: Option<crate::HassStr<'a>>,
 
 		/// The maximum QoS level of the state topic.
 		#[serde(default, skip_serializing_if = "crate::qos::MqttQoS::is_default")]

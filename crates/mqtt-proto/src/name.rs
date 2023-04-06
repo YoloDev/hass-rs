@@ -1,6 +1,6 @@
 use semval::{context::Context, Validate, ValidationResult};
 
-pub use crate::string_wrappers::Name;
+pub use crate::string::Name;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum NameInvalidity {
@@ -17,9 +17,11 @@ impl<'a> Validate for Name<'a> {
 	}
 }
 
+#[cfg(feature = "alloc")]
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use alloc::vec::Vec;
 
 	#[test]
 	fn empty_payload_is_invalid() {

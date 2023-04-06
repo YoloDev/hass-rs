@@ -1,6 +1,8 @@
-use crate::{device_class::DeviceClass, state_class::StateClass, template::Template, topic::Topic};
+use crate::{
+	device_class::DeviceClass, state_class::StateClass, template::Template, topic::Topic, HassStr,
+};
+use core::num::NonZeroU32;
 use hass_mqtt_macros::entity_document;
-use std::{borrow::Cow, num::NonZeroU32};
 
 /// This mqtt sensor platform uses the MQTT message payload as the sensor value.
 /// If messages in this state_topic are published with RETAIN flag, the sensor
@@ -46,7 +48,7 @@ pub struct Sensor<'a> {
 
 	/// Defines the units of measurement of the sensor, if any.
 	#[serde(borrow, default, skip_serializing_if = "Option::is_none")]
-	pub unit_of_measurement: Option<Cow<'a, str>>,
+	pub unit_of_measurement: Option<HassStr<'a>>,
 
 	/// Defines a [template][template] to extract the value. Available variables: `entity_id`.
 	/// The `entity_id` can be used to reference the entity’s attributes.

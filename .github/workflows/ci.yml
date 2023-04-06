@@ -30,6 +30,9 @@ jobs:
           # - beta
           - nightly
 
+    env:
+      TERM: xterm-256color
+
     steps:
       - name: Configure git
         run: |

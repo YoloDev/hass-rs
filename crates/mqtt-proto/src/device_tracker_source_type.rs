@@ -1,18 +1,18 @@
-use serde::{Deserialize, Serialize};
-
 /// Attribute of a device tracker that affects state when being used to track a person.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "ser", derive(serde::Serialize))]
+#[cfg_attr(feature = "de", derive(serde::Deserialize))]
 pub enum DeviceTrackerSourceType {
-	#[serde(rename = "gps")]
+	#[cfg_attr(any(feature = "ser", feature = "de"), serde(rename = "gps"))]
 	GPS,
 
-	#[serde(rename = "router")]
+	#[cfg_attr(any(feature = "ser", feature = "de"), serde(rename = "router"))]
 	Router,
 
-	#[serde(rename = "bluetooth")]
+	#[cfg_attr(any(feature = "ser", feature = "de"), serde(rename = "bluetooth"))]
 	Bluetooth,
 
 	/// Bluetooth Low Energy
-	#[serde(rename = "bluetooth_le")]
+	#[cfg_attr(any(feature = "ser", feature = "de"), serde(rename = "bluetooth_le"))]
 	BluetoothLE,
 }

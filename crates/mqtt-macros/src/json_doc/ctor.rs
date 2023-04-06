@@ -20,11 +20,11 @@ impl<'a> ToTokens for Ctor<'a> {
 				let required = &f.required;
 				let (field, arg) = if *required {
 					(
-						quote! { #ident: ::std::convert::Into::into( #ident ) },
-						Some(quote! { #ident: impl ::std::convert::Into::< #ty > }),
+						quote! { #ident: ::core::convert::Into::into( #ident ) },
+						Some(quote! { #ident: impl ::core::convert::Into::< #ty > }),
 					)
 				} else {
-					(quote! { #ident: ::std::default::Default::default() }, None)
+					(quote! { #ident: ::core::default::Default::default() }, None)
 				};
 				(arg, field)
 			})

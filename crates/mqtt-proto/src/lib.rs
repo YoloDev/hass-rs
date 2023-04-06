@@ -1,7 +1,12 @@
+#![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(provide_any, feature(provide_any))]
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
 pub(crate) mod document;
-pub(crate) mod string_wrappers;
+pub(crate) mod list;
+pub(crate) mod string;
 pub(crate) mod validation;
 
 pub mod availability;
@@ -54,5 +59,9 @@ pub use unique_id::UniqueId;
 #[doc(inline)]
 pub use document::Document;
 
+#[doc(inline)]
+pub use list::HassItems;
+#[doc(inline)]
+pub use string::HassStr;
 #[doc(inline)]
 pub use validation::ValidationError;

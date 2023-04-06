@@ -1,6 +1,6 @@
 use semval::{context::Context, Validate, ValidationResult};
 
-pub use crate::string_wrappers::Topic;
+pub use crate::string::Topic;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum TopicInvalidity {
@@ -22,9 +22,11 @@ impl<'a> Validate for Topic<'a> {
 	}
 }
 
+#[cfg(feature = "alloc")]
 #[cfg(test)]
 mod tests {
 	use super::*;
+	use alloc::vec::Vec;
 
 	#[test]
 	fn empty_topic_is_invalid() {

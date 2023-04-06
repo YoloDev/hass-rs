@@ -24,16 +24,18 @@ fn match_path<'a>(path: &'a Path, segments: &[&str]) -> Option<&'a PathArguments
 }
 
 fn as_option(p: &Path) -> Option<&Type> {
-	match_path(p, &["std", "option", "Option"]).and_then(|args| {
-		if let PathArguments::AngleBracketed(args) = args {
-			if args.args.len() == 1 {
-				if let syn::GenericArgument::Type(t) = &args.args[0] {
-					return Some(t);
+	match_path(p, &["std", "option", "Option"])
+		.or_else(|| match_path(p, &["core", "option", "Option"]))
+		.and_then(|args| {
+			if let PathArguments::AngleBracketed(args) = args {
+				if args.args.len() == 1 {
+					if let syn::GenericArgument::Type(t) = &args.args[0] {
+						return Some(t);
+					}
 				}
 			}
-		}
-		None
-	})
+			None
+		})
 }
 
 impl<'a> ToTokens for Builders<'a> {
@@ -55,7 +57,7 @@ impl<'a> ToTokens for Builders<'a> {
 						let unset_ident = format_ident!("unset_{}", ident, span = Span::call_site());
 						quote! {
 							#(#docs)*
-							pub fn #ident(mut self, #ident: impl ::std::convert::Into< #inner >) -> Self {
+							pub fn #ident(mut self, #ident: impl ::core::convert::Into< #inner >) -> Self {
 								self.#ident = Some(#ident.into());
 								self
 							}
@@ -69,7 +71,7 @@ impl<'a> ToTokens for Builders<'a> {
 					} else {
 						quote! {
 							#(#docs)*
-							pub fn #ident(mut self, #ident: impl ::std::convert::Into< #ty >) -> Self {
+							pub fn #ident(mut self, #ident: impl ::core::convert::Into< #ty >) -> Self {
 								self.#ident = #ident.into();
 								self
 							}

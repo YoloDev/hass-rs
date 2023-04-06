@@ -1,8 +1,6 @@
-use crate::{topic::Topic, validation::Validator};
+use crate::{topic::Topic, validation::Validator, HassItems, HassStr};
 use enumset::{EnumSet, EnumSetType};
 use hass_mqtt_macros::{entity_document, state_document};
-use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
 
 /// The mqtt light platform lets you control your MQTT enabled lights.
 ///
@@ -36,8 +34,8 @@ pub struct Light<'a> {
 	pub effect: Option<bool>,
 
 	/// The list of effects the light supports.
-	#[serde(borrow, default, skip_serializing_if = "<[Cow<str>]>::is_empty")]
-	pub effect_list: Cow<'a, [Cow<'a, str>]>,
+	#[serde(borrow, default, skip_serializing_if = "<[_]>::is_empty")]
+	pub effect_list: HassItems<'a, HassStr<'a>>,
 
 	/// The duration, in seconds, of a “long” flash.
 	/// Defaults to `10`.
@@ -259,8 +257,8 @@ pub struct LightState<'a> {
 	pub color: Option<LightColorState>,
 
 	/// Current light effect.
-	#[serde(default, skip_serializing_if = "Option::is_none")]
-	pub effect: Option<Cow<'a, str>>,
+	#[serde(default, borrow, skip_serializing_if = "Option::is_none")]
+	pub effect: Option<HassStr<'a>>,
 
 	/// Current light state.
 	pub state: OnOff,
@@ -344,25 +342,62 @@ impl<'a> LightState<'a> {
 	}
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, PartialEq)]
+#[cfg_attr(feature = "ser", derive(serde::Serialize))]
+#[cfg_attr(feature = "de", derive(serde::Deserialize))]
 pub struct LightColorState {
-	#[serde(default, skip_serializing_if = "Option::is_none")]
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(default, skip_serializing_if = "Option::is_none")
+	)]
 	red: Option<u8>,
-	#[serde(default, skip_serializing_if = "Option::is_none")]
+
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(default, skip_serializing_if = "Option::is_none")
+	)]
 	green: Option<u8>,
-	#[serde(default, skip_serializing_if = "Option::is_none")]
+
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(default, skip_serializing_if = "Option::is_none")
+	)]
 	blue: Option<u8>,
-	#[serde(default, skip_serializing_if = "Option::is_none")]
+
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(default, skip_serializing_if = "Option::is_none")
+	)]
 	cold_white: Option<u8>,
-	#[serde(default, skip_serializing_if = "Option::is_none")]
+
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(default, skip_serializing_if = "Option::is_none")
+	)]
 	white: Option<u8>,
-	#[serde(default, skip_serializing_if = "Option::is_none")]
+
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(default, skip_serializing_if = "Option::is_none")
+	)]
 	x: Option<f32>,
-	#[serde(default, skip_serializing_if = "Option::is_none")]
+
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(default, skip_serializing_if = "Option::is_none")
+	)]
 	y: Option<f32>,
-	#[serde(default, skip_serializing_if = "Option::is_none")]
+
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(default, skip_serializing_if = "Option::is_none")
+	)]
 	hue: Option<f32>,
-	#[serde(default, skip_serializing_if = "Option::is_none")]
+
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(default, skip_serializing_if = "Option::is_none")
+	)]
 	saturation: Option<f32>,
 }
 

@@ -1,5 +1,5 @@
+use core::fmt;
 use semval::{Invalidity, Validate};
-use std::fmt;
 
 #[cfg(feature = "spantrace")]
 use tracing_error::SpanTrace;
@@ -7,8 +7,10 @@ use tracing_error::SpanTrace;
 #[cfg(feature = "backtrace")]
 use std::backtrace::Backtrace;
 
-#[cfg(provide_any)]
+#[cfg(all(provide_any, feature = "std"))]
 use std::any::{Demand, Provider};
+
+use crate::HassItems;
 
 #[derive(Debug)]
 pub struct ValidationError<I: Invalidity + Send + Sync> {
@@ -64,7 +66,7 @@ impl<I: Invalidity + Send + Sync> fmt::Display for ValidationError<I> {
 	}
 }
 
-#[cfg(provide_any)]
+#[cfg(all(provide_any, feature = "std"))]
 impl<I: Invalidity + Send + Sync> Provider for ValidationError<I> {
 	fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
 		demand.provide_ref(&self.invalidity);
@@ -184,5 +186,14 @@ where
 			.0
 			.validate_value(self.1, semval::context::Context::new())
 			.into_result()
+	}
+}
+
+impl<'a, T: Validate> Validate for HassItems<'a, T> {
+	type Invalidity = <[T] as Validate>::Invalidity;
+
+	#[inline]
+	fn validate(&self) -> semval::ValidationResult<Self::Invalidity> {
+		self.as_ref().validate()
 	}
 }
