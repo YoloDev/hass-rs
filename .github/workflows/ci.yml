@@ -47,14 +47,33 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
 
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
       - name: Clippy
         run: cargo clippy --all-features -- -D warnings
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
 
       - name: Install cargo-all-features
         run: cargo install cargo-featurex
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
 
       - name: Run check (all feature permutations)
         run: cargo featurex clippy
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
 
       - name: Run tests (all feature permutations)
         run: cargo featurex test
+        env:
+          SCCACHE_GHA_ENABLED: "true"
+          RUSTC_WRAPPER: "sccache"
+
+      # - name: Run sccache stat for check
+      #   shell: bash
+      #   run: ${SCCACHE_PATH} --show-stats
