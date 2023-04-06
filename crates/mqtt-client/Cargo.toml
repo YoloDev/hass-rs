@@ -43,13 +43,11 @@ hass-provide-any-probe = { version = "0.0.0", path = "../../build/provide-any-pr
 default = [
 	"tls",
 	"paho",
-	"paho-bundled",
 	"backtrace",
 	"spantrace",
 	"hass-mqtt-provider-paho?/default",
 ]
-paho = ["dep:hass-mqtt-provider-paho"]
-paho-bundled = ["hass-mqtt-provider-paho?/bundled"]
+paho = ["hass-mqtt-provider-paho/bundled"]
 tls = ["hass-mqtt-provider/tls", "hass-mqtt-provider-paho?/ssl"]
 tls-bundled = ["tls", "hass-mqtt-provider-paho?/vendored-ssl"]
 backtrace = ["hass-mqtt-proto/backtrace"]

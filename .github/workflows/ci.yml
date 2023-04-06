@@ -40,28 +40,6 @@ jobs:
           git config --global core.symlinks true
           git config --global fetch.parallel 32
 
-      - uses: awalsh128/cache-apt-pkgs-action@v1
-        if: matrix.os == 'ubuntu-latest'
-        with:
-          packages: libpaho-mqtt-dev
-          version: 1.0
-
-      - uses: dsaltares/fetch-gh-release-asset@1.1.0
-        if: matrix.os == 'macos-latest'
-        with:
-          repo: eclipse/paho.mqtt.c
-          file: "Eclipse-Paho-MQTT-C-\\d+\\.\\d+\\.\\d+-Darwin\\.tar\\.gz\\.zip"
-          regex: true
-
-      - name: Unzip and install Paho C
-        if: matrix.os == 'macos-latest'
-        run: |
-          set -ex
-          unzip Eclipse-Paho-MQTT-C-*-Darwin.tar.gz.zip
-          tar -xzf Eclipse-Paho-MQTT-C-*-Darwin.tar.gz
-          sudo cp -r Eclipse-Paho-MQTT-C-*-Darwin/include /usr/local/include
-          sudo cp -r Eclipse-Paho-MQTT-C-*-Darwin/lib /usr/local/lib
-
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@master
         with:
