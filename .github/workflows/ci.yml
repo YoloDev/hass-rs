@@ -56,6 +56,7 @@ jobs:
       - name: Unzip and install Paho C
         if: matrix.os == 'macos-latest'
         run: |
+          set -ex
           unzip Eclipse-Paho-MQTT-C-*-Darwin.tar.gz.zip
           tar -xzf Eclipse-Paho-MQTT-C-*-Darwin.tar.gz
           sudo cp -r Eclipse-Paho-MQTT-C-*-Darwin/include /usr/local/include
