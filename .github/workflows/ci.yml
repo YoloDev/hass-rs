@@ -46,7 +46,7 @@ jobs:
           packages: libpaho-mqtt-dev
           version: 1.0
 
-      - uses: dsaltares/fetch-gh-release-asset@v1
+      - uses: dsaltares/fetch-gh-release-asset@1.1.0
         if: matrix.os == 'macos-latest'
         with:
           repo: eclipse/paho.mqtt.c
