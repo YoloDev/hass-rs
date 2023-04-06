@@ -7,7 +7,7 @@ use tracing_error::SpanTrace;
 #[cfg(feature = "backtrace")]
 use std::backtrace::Backtrace;
 
-#[cfg(provide_any)]
+#[cfg(all(provide_any, feature = "std"))]
 use std::any::{Demand, Provider};
 
 use crate::HassItems;
@@ -66,7 +66,7 @@ impl<I: Invalidity + Send + Sync> fmt::Display for ValidationError<I> {
 	}
 }
 
-#[cfg(provide_any)]
+#[cfg(all(provide_any, feature = "std"))]
 impl<I: Invalidity + Send + Sync> Provider for ValidationError<I> {
 	fn provide<'a>(&'a self, demand: &mut Demand<'a>) {
 		demand.provide_ref(&self.invalidity);
