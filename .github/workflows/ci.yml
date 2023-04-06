@@ -51,7 +51,7 @@ jobs:
         with:
           repository: eclipse/paho.mqtt.c
           latest: true
-          fileName: "Eclipse-Paho-MQTT-C-*-Darwin.tar.gz.zip"
+          fileName: "*-Darwin.tar.gz.zip"
 
       - name: Unzip and install Paho C
         if: matrix.os == 'macos-latest'
