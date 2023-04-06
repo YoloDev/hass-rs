@@ -33,8 +33,8 @@ pub use device::Device;
 pub use device_class::DeviceClass;
 #[doc(no_inline)]
 pub use device_tracker_source_type::DeviceTrackerSourceType;
-// #[doc(no_inline)]
-// pub use entity::{BinarySensor, Button, Cover, DeviceTracker, Light, Sensor, Switch};
+#[doc(no_inline)]
+pub use entity::{BinarySensor, Button, Cover, DeviceTracker, Light, Sensor, Switch};
 #[doc(no_inline)]
 pub use entity_category::EntityCategory;
 #[doc(no_inline)]

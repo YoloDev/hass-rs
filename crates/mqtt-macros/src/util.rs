@@ -65,6 +65,7 @@ impl PathExt for Path {
 	fn as_option(self: &Path) -> Option<&Type> {
 		self
 			.match_path(&["std", "option", "Option"])
+			.or_else(|| self.match_path(&["core", "option", "Option"]))
 			.and_then(|args| {
 				if let PathArguments::AngleBracketed(args) = args {
 					if args.args.len() == 1 {

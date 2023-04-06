@@ -213,7 +213,7 @@ impl TryFrom<input::DocumentFieldInput> for DocumentField {
 		}
 		let validate = value.validate.into();
 		let builder = value.builder.into();
-		let has_default = attrs
+		let has_default = serde
 			.iter()
 			.any(|attr| attr.path.is_ident("serde") && attr.tokens.to_string().contains("default"));
 		let required = !has_default;

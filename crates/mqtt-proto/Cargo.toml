@@ -15,7 +15,6 @@ nameof = "1"
 semval = { version = "0.5", default-features = false }
 serde = { version = "1", features = ["derive"], default-features = false }
 serde_repr = "0.1"
-thiserror = "1"
 tracing-error = { version = "0.2", optional = true }
 
 hass-mqtt-macros = { version = "0.0.0", path = "../mqtt-macros" }
@@ -29,10 +28,11 @@ serde_test = "1"
 hass-provide-any-probe = { version = "0.0.0", path = "../../build/provide-any-probe" }
 
 [features]
-default = ["backtrace", "spantrace", "std", "ser", "de"]
+default = ["backtrace", "spantrace", "std", "serde"]
 ser = []
 de = ["alloc"]
-std = ["alloc", "serde/std"]
+serde = ["ser", "de"]
+std = ["alloc", "serde/std", "serde"]
 alloc = ["serde/alloc"]
 backtrace = ["std"]
 spantrace = ["dep:tracing-error", "std"]
