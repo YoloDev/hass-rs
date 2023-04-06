@@ -55,24 +55,28 @@ jobs:
         env:
           SCCACHE_GHA_ENABLED: "true"
           RUSTC_WRAPPER: "sccache"
+          CARGO_INCREMENTAL: "0"
 
-      - name: Install cargo-all-features
+      - name: Install cargo-featurex
         run: cargo install cargo-featurex
         env:
           SCCACHE_GHA_ENABLED: "true"
           RUSTC_WRAPPER: "sccache"
+          CARGO_INCREMENTAL: "0"
 
       - name: Run check (all feature permutations)
         run: cargo featurex clippy
         env:
           SCCACHE_GHA_ENABLED: "true"
           RUSTC_WRAPPER: "sccache"
+          CARGO_INCREMENTAL: "0"
 
       - name: Run tests (all feature permutations)
         run: cargo featurex test
         env:
           SCCACHE_GHA_ENABLED: "true"
           RUSTC_WRAPPER: "sccache"
+          CARGO_INCREMENTAL: "0"
 
       # - name: Run sccache stat for check
       #   shell: bash
