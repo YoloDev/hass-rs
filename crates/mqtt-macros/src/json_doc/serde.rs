@@ -45,7 +45,7 @@ impl<'a> ToTokens for SerdeImpl<'a> {
 							let ser_ident = format_ident!("__serialize_field_{}", idx);
 							let ser_ident_str = ser_ident.to_string();
 							let ser_fn = quote! {
-								fn #ser_ident<S: ::serde::Serializer>(_: &(), s: S) -> ::std::result::Result<S::Ok, S::Error> {
+								fn #ser_ident<S: ::serde::Serializer>(_: &(), s: S) -> ::core::result::Result<S::Ok, S::Error> {
 									s.serialize_str(#value)
 								}
 							};
