@@ -45,12 +45,26 @@ jobs:
         with:
           toolchain: ${{ matrix.channel }}
           components: clippy
-      - uses: Swatinem/rust-cache@v2
+
+      - name: Run sccache-cache
+        if: github.repository == 'YoloDev/hass-rs'
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Configure sccache
+        if: github.repository == 'YoloDev/hass-rs'
+        run: |
+          echo "RUSTC_WRAPPER=sccache" >> $GITHUB_ENV
+          echo "CARGO_INCREMENTAL=0" >> $GITHUB_ENV
+          echo "SCCACHE_BUCKET=${{ vars.SCCACHE_BUCKET }}" >> $GITHUB_ENV
+          echo "SCCACHE_REGION=${{ vars.SCCACHE_REGION }}" >> $GITHUB_ENV
+          echo "SCCACHE_ENDPOINT=${{ secrets.SCCACHE_ENDPOINT }}" >> $GITHUB_ENV
+          echo "AWS_ACCESS_KEY_ID=${{ secrets.SCCACHE_ACCESS_KEY_ID }}" >> $GITHUB_ENV
+          echo "AWS_SECRET_ACCESS_KEY=${{ secrets.SCCACHE_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
 
       - name: Clippy
         run: cargo clippy --all-features -- -D warnings
 
-      - name: Install cargo-all-features
+      - name: Install cargo-featurex
         run: cargo install cargo-featurex
 
       - name: Run check (all feature permutations)
@@ -58,3 +72,7 @@ jobs:
 
       - name: Run tests (all feature permutations)
         run: cargo featurex test
+
+      # - name: Run sccache stat for check
+      #   shell: bash
+      #   run: ${SCCACHE_PATH} --show-stats
