@@ -37,6 +37,12 @@ jobs:
           git config --global core.symlinks true
           git config --global fetch.parallel 32
 
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        if: matrix.os == 'ubuntu-latest'
+        with:
+          packages: libpaho-mqtt-dev
+          version: 1.0
+
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@master
         with:

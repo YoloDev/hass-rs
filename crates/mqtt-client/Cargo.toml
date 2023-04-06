@@ -48,7 +48,7 @@ default = [
 	"spantrace",
 	"hass-mqtt-provider-paho?/default",
 ]
-paho = ["hass-mqtt-provider-paho"]
+paho = ["dep:hass-mqtt-provider-paho"]
 paho-bundled = ["hass-mqtt-provider-paho?/bundled"]
 tls = ["hass-mqtt-provider/tls", "hass-mqtt-provider-paho?/ssl"]
 tls-bundled = ["tls", "hass-mqtt-provider-paho?/vendored-ssl"]
