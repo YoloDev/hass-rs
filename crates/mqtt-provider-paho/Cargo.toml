@@ -1,6 +1,6 @@
 [package]
 name = "hass-mqtt-provider-paho"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -17,9 +17,9 @@ tokio = { version = "1", default-features = false, features = ["rt", "net"] }
 tracing = "0.1"
 tracing-opentelemetry = "0.18"
 
-hass-dyn-error = { version = "0.0.0", path = "../dyn-error" }
-hass-metrics = { version = "0.0.0", path = "../metrics" }
-hass-mqtt-provider = { version = "0.0.0", path = "../mqtt-provider" }
+hass-dyn-error = { version = "0.1.0", path = "../dyn-error" }
+hass-metrics = { version = "0.1.0", path = "../metrics" }
+hass-mqtt-provider = { version = "0.1.0", path = "../mqtt-provider" }
 
 [features]
 default = ["bundled", "ssl"]

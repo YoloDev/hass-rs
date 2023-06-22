@@ -1,6 +1,6 @@
 [package]
 name = "hass-mqtt-client"
-version = "0.0.0"
+version = "0.1.0"
 edition = "2021"
 description = "home-assistant MQTT client"
 license = "MIT"
@@ -29,10 +29,10 @@ tracing = "0.1"
 tracing-error = "0.2"
 tracing-opentelemetry = "0.18"
 
-hass-dyn-error = { version = "0.0.0", path = "../dyn-error" }
-hass-mqtt-provider = { version = "0.0.0", path = "../mqtt-provider", default-features = false }
-hass-mqtt-provider-paho = { version = "0.0.0", path = "../mqtt-provider-paho", default-features = false, optional = true }
-hass-mqtt-proto = { version = "0.0.0", path = "../mqtt-proto", default-features = false, features = [
+hass-dyn-error = { version = "0.1.0", path = "../dyn-error" }
+hass-mqtt-provider = { version = "0.1.0", path = "../mqtt-provider", default-features = false }
+hass-mqtt-provider-paho = { version = "0.1.0", path = "../mqtt-provider-paho", default-features = false, optional = true }
+hass-mqtt-proto = { version = "0.1.0", path = "../mqtt-proto", default-features = false, features = [
 	"std",
 ] }
 
