@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 async-trait = "0.1"
-flume = "0.10"
+flume = "0.11"
 futures = { version = "0.3", default-features = false }
 opentelemetry = "0.18"
 paho-mqtt = { version = "0.12", default-features = false }
