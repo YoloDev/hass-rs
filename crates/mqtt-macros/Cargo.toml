@@ -18,7 +18,7 @@ darling = "0.14"
 itertools = { version = "0.11" }
 proc-macro2 = "1"
 quote = "1"
-syn = { version = "1", features = ["derive", "parsing"] }
+syn = { version = "1.0.109", features = ["derive", "parsing"] }
 
 [package.metadata.docs.rs]
 all-features = true
