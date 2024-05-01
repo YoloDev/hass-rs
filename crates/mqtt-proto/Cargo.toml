@@ -22,7 +22,7 @@ hass-mqtt-macros = { version = "0.0.0", path = "../mqtt-macros" }
 [dev-dependencies]
 assert_matches = "1"
 serde_json = "1"
-serde_test = "1"
+serde_test = "1.0.176"
 
 [build-dependencies]
 hass-provide-any-probe = { version = "0.0.0", path = "../../build/provide-any-probe" }
