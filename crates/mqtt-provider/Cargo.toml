@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1.68"
 futures = { version = "0.3.28", default-features = false }
-tracing = "0.1"
+tracing = "0.1.40"
 
 [features]
 default = ["tls"]
