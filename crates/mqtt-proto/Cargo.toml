@@ -11,7 +11,7 @@ repository = "https://github.com/YoloDev/hass-rs"
 
 [dependencies]
 enumset = { version = "1", features = ["serde"] }
-nameof = "1"
+nameof = "1.2.2"
 semval = { version = "0.5", default-features = false }
 serde = { version = "1", features = ["derive"], default-features = false }
 serde_repr = "0.1"
