@@ -12,7 +12,7 @@ futures = { version = "0.3", default-features = false }
 opentelemetry = "0.18"
 paho-mqtt = { version = "0.12", default-features = false }
 pin-project = "1"
-thiserror = "1"
+thiserror = "1.0.59"
 tokio = { version = "1", default-features = false, features = ["rt", "net"] }
 tracing = "0.1"
 tracing-opentelemetry = "0.18"
