@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 async-trait = "0.1"
 flume = "0.10"
-futures = { version = "0.3", default-features = false }
+futures = { version = "0.3.30", default-features = false }
 opentelemetry = "0.18"
 paho-mqtt = { version = "0.12", default-features = false }
 pin-project = "1"
