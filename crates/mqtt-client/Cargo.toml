@@ -32,7 +32,7 @@ tracing-opentelemetry = "0.18"
 hass-dyn-error = { version = "0.0.0", path = "../dyn-error" }
 hass-mqtt-provider = { version = "0.0.0", path = "../mqtt-provider", default-features = false }
 hass-mqtt-provider-paho = { version = "0.0.0", path = "../mqtt-provider-paho", default-features = false, optional = true }
-hass-mqtt-proto = { version = "0.0.0", path = "../mqtt-proto", default-features = false, features = [
+hass-mqtt-proto = { version = "0.1.0", path = "../mqtt-proto", default-features = false, features = [
 	"std",
 ] }
 
