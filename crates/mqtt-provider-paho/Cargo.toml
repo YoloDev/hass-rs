@@ -15,7 +15,7 @@ pin-project = "1"
 thiserror = "1"
 tokio = { version = "1", default-features = false, features = ["rt", "net"] }
 tracing = "0.1"
-tracing-opentelemetry = "0.18"
+tracing-opentelemetry = "0.31"
 
 hass-dyn-error = { version = "0.0.0", path = "../dyn-error" }
 hass-metrics = { version = "0.0.0", path = "../metrics" }
