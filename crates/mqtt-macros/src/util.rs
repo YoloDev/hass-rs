@@ -26,12 +26,11 @@ impl Prepend for syn::FieldsNamed {
 		let mut items = items.named;
 		mem::swap(&mut self.named, &mut items);
 
-		if !items.is_empty() {
-			if let Some(l) = self.named.last_mut() {
-				if l.colon_token.is_none() {
-					l.colon_token = Some(<syn::Token!(:)>::default());
-				}
-			}
+		if !items.is_empty()
+			&& let Some(l) = self.named.last_mut()
+			&& l.colon_token.is_none()
+		{
+			l.colon_token = Some(<syn::Token!(:)>::default());
 		}
 
 		self.named.extend(items);
@@ -40,10 +39,10 @@ impl Prepend for syn::FieldsNamed {
 pub(crate) trait ModifyLifetimes: Clone {
 	fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self>;
 
-	fn make_lifetimes_static(&self) -> Cow<Self> {
+	fn make_lifetimes_static(&self) -> Cow<'_, Self> {
 		self.make_lifetimes(&Lifetime::new("'static", Span::call_site()))
 	}
-	fn make_lifetimes(&self, lifetime: &Lifetime) -> Cow<Self> {
+	fn make_lifetimes(&self, lifetime: &Lifetime) -> Cow<'_, Self> {
 		self.map_lifetimes(&mut |_| lifetime.clone())
 	}
 }

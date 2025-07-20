@@ -27,14 +27,14 @@ fn as_option(p: &Path) -> Option<&Type> {
 	match_path(p, &["std", "option", "Option"])
 		.or_else(|| match_path(p, &["core", "option", "Option"]))
 		.and_then(|args| {
-			if let PathArguments::AngleBracketed(args) = args {
-				if args.args.len() == 1 {
-					if let syn::GenericArgument::Type(t) = &args.args[0] {
-						return Some(t);
-					}
-				}
+			if let PathArguments::AngleBracketed(args) = args
+				&& args.args.len() == 1
+				&& let syn::GenericArgument::Type(t) = &args.args[0]
+			{
+				Some(t)
+			} else {
+				None
 			}
-			None
 		})
 }
 
