@@ -9,7 +9,7 @@ edition = "2021"
 async-trait = "0.1"
 flume = "0.10"
 futures = { version = "0.3", default-features = false }
-opentelemetry = "0.18"
+opentelemetry = "0.30"
 paho-mqtt = { version = "0.12", default-features = false }
 pin-project = "1"
 thiserror = "1"
