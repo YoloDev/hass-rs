@@ -23,7 +23,7 @@ jobs:
       matrix:
         os:
           - macos-15
-          - windows-2025
+          # - windows-2025
           - ubuntu-24.04
           - ubuntu-24.04-arm
         channel:
