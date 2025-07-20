@@ -48,7 +48,7 @@ jobs:
 
       - name: Run sccache-cache
         if: github.repository == 'YoloDev/hass-rs'
-        uses: mozilla-actions/sccache-action@v0.0.3
+        uses: mozilla-actions/sccache-action@v0.0.9
 
       - name: Configure sccache
         if: github.repository == 'YoloDev/hass-rs'
