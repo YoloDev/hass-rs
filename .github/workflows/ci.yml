@@ -62,7 +62,10 @@ jobs:
           echo "AWS_ACCESS_KEY_ID=${{ secrets.SCCACHE_ACCESS_KEY_ID }}" >> $GITHUB_ENV
           echo "AWS_SECRET_ACCESS_KEY=${{ secrets.SCCACHE_SECRET_ACCESS_KEY }}" >> $GITHUB_ENV
 
-      - name: Clippy
+      - name: Clippy (ignore warnings)
+        run: cargo clippy --all-features
+
+      - name: Clippy (deny warnings)
         run: cargo clippy --all-features -- -D warnings
 
       - name: Install cargo-featurex
