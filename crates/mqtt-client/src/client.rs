@@ -3,7 +3,7 @@ pub(crate) mod inner;
 pub(crate) mod subscription;
 
 use self::subscription::SubscriptionToken;
-use crate::{entity::EntityTopicBuilder, HassMqttOptions};
+use crate::{HassMqttOptions, entity::EntityTopicBuilder};
 use futures::Stream;
 use hass_dyn_error::DynError;
 use hass_mqtt_provider::{MqttProvider, QosLevel};
@@ -14,7 +14,7 @@ use std::{
 	task::{Context, Poll},
 };
 use thiserror::Error;
-use tracing::{field, instrument, span, Level, Span};
+use tracing::{Level, Span, field, instrument, span};
 
 #[derive(Clone)]
 pub struct Message {
@@ -126,11 +126,11 @@ impl HassMqttClient {
 		&self,
 		domain: impl Into<Arc<str>>,
 		entity_id: impl Into<Arc<str>>,
-	) -> EntityTopicBuilder {
+	) -> EntityTopicBuilder<'_> {
 		self._entity(domain.into(), entity_id.into())
 	}
 
-	fn _entity(&self, domain: Arc<str>, entity_id: Arc<str>) -> EntityTopicBuilder {
+	fn _entity(&self, domain: Arc<str>, entity_id: Arc<str>) -> EntityTopicBuilder<'_> {
 		let span = span!(Level::DEBUG, "HassMqttClient::entity", client.id = %self.client_id, entity.domain = %domain, entity.id = %entity_id, entity.topic = field::Empty);
 		EntityTopicBuilder::new(self, domain, entity_id, span)
 	}

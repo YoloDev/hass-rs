@@ -2,7 +2,7 @@ use crate::{
 	client::{HassMqttClient, Message, Subscription},
 	topics::EntityTopicsConfig,
 };
-use futures::{future::BoxFuture, FutureExt, Stream};
+use futures::{FutureExt, Stream, future::BoxFuture};
 use hass_dyn_error::DynError;
 use hass_mqtt_provider::QosLevel;
 use opentelemetry::trace::{SpanContext, TraceContextExt};
@@ -13,7 +13,7 @@ use std::{
 	sync::Arc,
 };
 use thiserror::Error;
-use tracing::{instrument, span, Instrument, Level, Span};
+use tracing::{Instrument, Level, Span, instrument, span};
 use tracing_opentelemetry::OpenTelemetrySpanExt;
 
 pub struct EntityTopicBuilder<'a> {
@@ -122,7 +122,7 @@ impl EntityTopic {
 		}
 	}
 
-	pub fn state_topic(&self) -> StateTopicBuilder {
+	pub fn state_topic(&self) -> StateTopicBuilder<'_> {
 		let span = span!(
 			Level::DEBUG,
 			"EntityTopic::state_topic",
@@ -198,7 +198,7 @@ pub struct EntitySubscribeError {
 }
 
 impl EntityTopic {
-	pub fn command_topic(&self) -> CommandTopicBuilder {
+	pub fn command_topic(&self) -> CommandTopicBuilder<'_> {
 		CommandTopicBuilder {
 			entity: self,
 			topic: TopicName::Default,
