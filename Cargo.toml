@@ -20,3 +20,6 @@ members = [
 [workspace.metadata.featurex]
 ignored = ["default?"]
 required = ["bundled?"]
+
+[workspace.metadata.crane]
+name = "hass-rs"
