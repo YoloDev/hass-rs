@@ -8,8 +8,8 @@ use std::{
 	time::Duration,
 };
 use tracing::{
-	span::{Entered, EnteredSpan},
 	Span,
+	span::{Entered, EnteredSpan},
 };
 
 #[repr(u8)]
@@ -225,7 +225,7 @@ impl<T: MqttClient> MqttReceivedMessage<T> {
 		(self.message, self.span)
 	}
 
-	pub fn enter(&self) -> Entered {
+	pub fn enter(&self) -> Entered<'_> {
 		self.span.enter()
 	}
 
