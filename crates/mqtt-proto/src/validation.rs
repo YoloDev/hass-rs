@@ -97,12 +97,12 @@ pub(crate) trait ValidateContextExt {
 		U: Invalidity;
 
 	/// Validate all items in an iterator.
-	fn validate_iter<'a, F, U, I, II: 'a>(self, target: I, map: F) -> Self
+	fn validate_iter<'a, F, U, I, II>(self, target: I, map: F) -> Self
 	where
 		F: Fn(usize, U) -> Self::Invalidity,
 		U: Invalidity,
 		I: IntoIterator<Item = &'a II>,
-		II: Validate<Invalidity = U>;
+		II: Validate<Invalidity = U> + 'a;
 
 	fn validate_using<U, T>(self, validator: &impl Validator<T, Invalidity = U>, value: &T) -> Self
 	where
@@ -133,12 +133,12 @@ impl<V: Invalidity> ValidateContextExt for semval::context::Context<V> {
 		}
 	}
 
-	fn validate_iter<'a, F, U, I, II: 'a>(self, target: I, map: F) -> Self
+	fn validate_iter<'a, F, U, I, II>(self, target: I, map: F) -> Self
 	where
 		F: Fn(usize, U) -> Self::Invalidity,
 		U: Invalidity,
 		I: IntoIterator<Item = &'a II>,
-		II: Validate<Invalidity = U>,
+		II: Validate<Invalidity = U> + 'a,
 	{
 		let mut ret = self;
 

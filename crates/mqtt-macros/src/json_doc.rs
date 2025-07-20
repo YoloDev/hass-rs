@@ -111,7 +111,7 @@ impl TryFrom<input::DocumentStructInput> for DocumentStruct {
 		let (docs, attrs): (Vec<_>, Vec<_>) = value
 			.attrs
 			.into_iter()
-			.partition(|attr| attr.path.is_ident("doc"));
+			.partition(|attr| attr.path().is_ident("doc"));
 
 		let invalidity_ident = format_ident!("{}Invalidity", &value.ident, span = Span::call_site());
 
@@ -143,15 +143,21 @@ pub(crate) struct DocumentField {
 
 enum FieldValidation {
 	None,
-	Default,
-	With(syn::Path),
+	Default(Option<Span>),
+	With(Span, syn::Path),
 }
 impl FieldValidation {
-	fn then<R>(&self, f: impl FnOnce(Option<&syn::Path>) -> R) -> Option<R> {
+	fn then<R>(&self, f: impl FnOnce(&Span, Option<&syn::Path>) -> R) -> Option<R> {
 		match self {
 			Self::None => None,
-			Self::Default => Some(f(None)),
-			Self::With(path) => Some(f(Some(path))),
+			Self::Default(span) => {
+				let span = match span.as_ref() {
+					Some(span) => span,
+					None => &Span::call_site(),
+				};
+				Some(f(span, None))
+			}
+			Self::With(span, path) => Some(f(span, Some(path))),
 		}
 	}
 }
@@ -160,8 +166,8 @@ impl From<input::FieldValidation> for FieldValidation {
 	fn from(value: input::FieldValidation) -> Self {
 		match value {
 			input::FieldValidation::None => Self::None,
-			input::FieldValidation::Default(_) => Self::Default,
-			input::FieldValidation::With(_, path) => Self::With(path),
+			input::FieldValidation::Default(span) => Self::Default(span),
+			input::FieldValidation::With(span, path) => Self::With(span, path),
 		}
 	}
 }
@@ -170,11 +176,13 @@ impl From<input::FieldValidation> for FieldValidation {
 struct Builder {
 	pub enabled: bool,
 	pub rename: Option<syn::Ident>,
+	pub span: Span,
 }
 
 impl From<input::Builder> for Builder {
 	fn from(value: input::Builder) -> Self {
 		Builder {
+			span: value.span(),
 			enabled: value.enabled,
 			rename: value.rename,
 		}
@@ -203,9 +211,9 @@ impl TryFrom<input::DocumentFieldInput> for DocumentField {
 		let mut serde = Vec::with_capacity(2);
 		let mut attrs = Vec::with_capacity(value.attrs.len());
 		for attr in value.attrs {
-			if attr.path.is_ident("doc") {
+			if attr.path().is_ident("doc") {
 				docs.push(attr);
-			} else if attr.path.is_ident("serde") {
+			} else if attr.path().is_ident("serde") {
 				serde.push(attr);
 			} else {
 				attrs.push(attr);
@@ -215,7 +223,11 @@ impl TryFrom<input::DocumentFieldInput> for DocumentField {
 		let builder = value.builder.into();
 		let has_default = serde
 			.iter()
-			.any(|attr| attr.path.is_ident("serde") && attr.tokens.to_string().contains("default"));
+			.filter_map(|attr| match &attr.meta {
+				syn::Meta::List(list) => Some(list),
+				_ => None,
+			})
+			.any(|list| list.tokens.to_string().contains("default"));
 		let required = !has_default;
 
 		let variant_ident = format_ident!(

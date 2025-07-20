@@ -48,7 +48,7 @@ impl<'a> ToTokens for Builders<'a> {
 				.builder
 				.rename
 				.clone()
-				.unwrap_or_else(|| format_ident!("{}", &f.ident, span = Span::call_site()));
+				.unwrap_or_else(|| format_ident!("{}", &f.ident, span = f.builder.span));
 			let docs = &f.docs;
 			let ty = &f.ty;
 			match ty {

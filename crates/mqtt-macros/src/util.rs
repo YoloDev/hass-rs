@@ -12,9 +12,8 @@ pub trait CfgExt {
 
 impl CfgExt for Attribute {
 	fn cfg(&self, cfg: impl quote::ToTokens) -> proc_macro2::TokenStream {
-		let path = &self.path;
-		let tokens = &self.tokens;
-		quote!(#[cfg_attr(#cfg, #path #tokens)])
+		let meta = &self.meta;
+		quote!(#[cfg_attr(#cfg, #meta)])
 	}
 }
 
@@ -38,55 +37,11 @@ impl Prepend for syn::FieldsNamed {
 		self.named.extend(items);
 	}
 }
-
-pub(crate) trait PathExt {
-	fn match_path(&self, segments: &[&str]) -> Option<&PathArguments>;
-	fn as_option(&self) -> Option<&Type>;
-}
-
-impl PathExt for Path {
-	fn match_path<'a>(self: &'a Path, segments: &[&str]) -> Option<&'a PathArguments> {
-		if self.segments.len() == 1 && self.segments[0].ident == segments.last().unwrap() {
-			Some(&self.segments[0].arguments)
-		} else if self.leading_colon.is_some()
-			&& self.segments.len() == segments.len()
-			&& self
-				.segments
-				.iter()
-				.zip(segments)
-				.all(|(a, b)| a.ident == b)
-		{
-			Some(&self.segments.last().unwrap().arguments)
-		} else {
-			None
-		}
-	}
-
-	fn as_option(self: &Path) -> Option<&Type> {
-		self
-			.match_path(&["std", "option", "Option"])
-			.or_else(|| self.match_path(&["core", "option", "Option"]))
-			.and_then(|args| {
-				if let PathArguments::AngleBracketed(args) = args {
-					if args.args.len() == 1 {
-						if let syn::GenericArgument::Type(t) = &args.args[0] {
-							return Some(t);
-						}
-					}
-				}
-				None
-			})
-	}
-}
-
 pub(crate) trait ModifyLifetimes: Clone {
 	fn map_lifetimes<'a>(&'a self, f: &mut impl FnMut(&Lifetime) -> Lifetime) -> Cow<'a, Self>;
 
 	fn make_lifetimes_static(&self) -> Cow<Self> {
 		self.make_lifetimes(&Lifetime::new("'static", Span::call_site()))
-	}
-	fn make_lifetimes_inferred(&self) -> Cow<Self> {
-		self.make_lifetimes(&Lifetime::new("'_", Span::call_site()))
 	}
 	fn make_lifetimes(&self, lifetime: &Lifetime) -> Cow<Self> {
 		self.map_lifetimes(&mut |_| lifetime.clone())
@@ -257,11 +212,12 @@ impl ModifyLifetimes for PathSegment {
 						Cow::Borrowed(_) => Cow::Borrowed(a),
 						Cow::Owned(ty) => Cow::Owned(GenericArgument::Type(ty)),
 					},
-					GenericArgument::Binding(v) => match v.ty.map_lifetimes(f) {
+					GenericArgument::AssocType(v) => match v.ty.map_lifetimes(f) {
 						Cow::Borrowed(_) => Cow::Borrowed(a),
-						Cow::Owned(ty) => {
-							Cow::Owned(GenericArgument::Binding(syn::Binding { ty, ..v.clone() }))
-						}
+						Cow::Owned(ty) => Cow::Owned(GenericArgument::AssocType(syn::AssocType {
+							ty,
+							..v.clone()
+						})),
 					},
 					GenericArgument::Constraint(v) => match v.map_lifetimes(f) {
 						Cow::Borrowed(_) => Cow::Borrowed(a),

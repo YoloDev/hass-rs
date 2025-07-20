@@ -2,7 +2,7 @@ use super::DocumentStruct;
 use crate::util::ModifyLifetimes;
 use darling::ToTokens;
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, quote_spanned};
 
 struct InvalidityEnum<'a>(&'a DocumentStruct);
 
@@ -11,13 +11,14 @@ impl<'a> ToTokens for InvalidityEnum<'a> {
 		let vis = &self.0.vis;
 		let ident = &self.0.invalidity_ident;
 		let variants = self.0.fields.iter().filter_map(|f| {
-			f.validate.then(|p| {
+			f.validate.then(|span, p| {
 				let ty = f.ty.make_lifetimes_static();
 				let variant_ident = &f.variant_ident;
 
 				match p {
 					None => quote! { #variant_ident(<#ty as ::semval::Validate>::Invalidity) },
 					Some(p) => {
+						let p = quote_spanned!(*span=>#p);
 						quote! { #variant_ident(<#p as crate::validation::Validator<#ty>>::Invalidity) }
 					}
 				}

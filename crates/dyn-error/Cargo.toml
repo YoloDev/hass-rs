@@ -1,14 +1,17 @@
 [package]
 name = "hass-dyn-error"
 version = "0.0.0"
-edition = "2021"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 
 [build-dependencies]
-hass-provide-any-probe = { version = "0.0.0", path = "../../build/provide-any-probe" }
+hass-provide-any-probe = { workspace = true }
 
 [package.metadata.docs.rs]
 all-features = true
@@ -17,3 +20,6 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 
 [package.metadata.cargo-all-features]
 skip_optional_dependencies = true
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(provide_any)'] }

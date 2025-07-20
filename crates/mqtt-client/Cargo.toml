@@ -1,55 +1,54 @@
 [package]
 name = "hass-mqtt-client"
 version = "0.0.0"
-edition = "2021"
 description = "home-assistant MQTT client"
-license = "MIT"
-authors = ["Aleksander Heintz <alxandr@alxandr.me>"]
-repository = "https://github.com/YoloDev/hass-rs"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-trait = "0.1"
-bytes = "1"
-color-eyre = "0.6"
-dirs = "5"
-flume = "0.10"
-futures = "0.3"
-generational-arena = "0.2"
-opentelemetry = "0.18"
-pin-project = "1"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
-slug = "0.1"
-static_assertions = "1"
-thiserror = "1"
-tokio = { version = "1", features = ["full"] }
-tracing = "0.1"
-tracing-error = "0.2"
-tracing-opentelemetry = "0.18"
+async-trait = { workspace = true }
+bytes = { workspace = true }
+color-eyre = { workspace = true }
+dirs = { workspace = true }
+flume = { workspace = true }
+futures = { workspace = true }
+generational-arena = { workspace = true }
+opentelemetry = { workspace = true }
+pin-project = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+slug = { workspace = true }
+static_assertions = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }
+tracing-error = { workspace = true }
+tracing-opentelemetry = { workspace = true }
 
-hass-dyn-error = { version = "0.0.0", path = "../dyn-error" }
-hass-mqtt-provider = { version = "0.0.0", path = "../mqtt-provider", default-features = false }
-hass-mqtt-provider-paho = { version = "0.0.0", path = "../mqtt-provider-paho", default-features = false, optional = true }
-hass-mqtt-proto = { version = "0.0.0", path = "../mqtt-proto", default-features = false, features = [
-	"std",
-] }
+hass-dyn-error = { workspace = true }
+hass-mqtt-provider = { workspace = true }
+hass-mqtt-provider-paho = { workspace = true, optional = true }
+hass-mqtt-proto = { workspace = true, features = ["std"] }
 
 [build-dependencies]
-hass-provide-any-probe = { version = "0.0.0", path = "../../build/provide-any-probe" }
+hass-provide-any-probe = { workspace = true }
 
 [features]
 default = [
-	"tls",
+	"ssl",
 	"paho",
 	"backtrace",
 	"spantrace",
 	"hass-mqtt-provider-paho?/default",
 ]
 paho = ["hass-mqtt-provider-paho/bundled"]
-tls = ["hass-mqtt-provider/tls", "hass-mqtt-provider-paho?/ssl"]
-tls-bundled = ["tls", "hass-mqtt-provider-paho?/vendored-ssl"]
+ssl = ["hass-mqtt-provider/ssl", "hass-mqtt-provider-paho?/ssl"]
+ssl-bundled = ["ssl", "hass-mqtt-provider-paho?/vendored-ssl"]
 backtrace = ["hass-mqtt-proto/backtrace"]
 spantrace = ["hass-mqtt-proto/spantrace"]
 
@@ -60,3 +59,9 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 
 [package.metadata.cargo-all-features]
 skip_optional_dependencies = true
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+	'cfg(doc_cfg)',
+	'cfg(provide_any)',
+] }

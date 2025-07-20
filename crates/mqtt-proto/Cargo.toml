@@ -1,31 +1,31 @@
 [package]
 name = "hass-mqtt-proto"
 version = "0.0.0"
-edition = "2021"
 description = "home-assistant MQTT discovery types"
-license = "MIT"
-authors = ["Aleksander Heintz <alxandr@alxandr.me>"]
-repository = "https://github.com/YoloDev/hass-rs"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-enumset = { version = "1", features = ["serde"] }
-nameof = "1"
-semval = { version = "0.5", default-features = false }
-serde = { version = "1", features = ["derive"], default-features = false }
-serde_repr = "0.1"
-tracing-error = { version = "0.2", optional = true }
+enumset = { workspace = true, features = ["serde"] }
+nameof = { workspace = true }
+semval = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_repr = { workspace = true }
+tracing-error = { workspace = true, optional = true }
 
-hass-mqtt-macros = { version = "0.0.0", path = "../mqtt-macros" }
+hass-mqtt-macros = { workspace = true }
 
 [dev-dependencies]
-assert_matches = "1"
-serde_json = "1"
-serde_test = "1"
+assert_matches = { workspace = true }
+serde_json = { workspace = true }
+serde_test = { workspace = true }
 
 [build-dependencies]
-hass-provide-any-probe = { version = "0.0.0", path = "../../build/provide-any-probe" }
+hass-provide-any-probe = { workspace = true }
 
 [features]
 default = ["backtrace", "spantrace", "std", "serde"]
@@ -41,3 +41,9 @@ spantrace = ["dep:tracing-error", "std"]
 all-features = true
 targets = ["x86_64-unknown-linux-gnu"]
 rustdoc-args = ["--cfg", "doc_cfg"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+	'cfg(doc_cfg)',
+	'cfg(provide_any)',
+] }

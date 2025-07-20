@@ -8,7 +8,6 @@ mod mqtt;
 mod options;
 mod router;
 mod topics;
-mod tracking;
 
 pub use client::{ConnectError, HassMqttClient, Message};
 pub use entity::{

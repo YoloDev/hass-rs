@@ -185,7 +185,7 @@ impl<'a, T> core::ops::Deref for HassItems<'a, T> {
 #[cfg(feature = "alloc")]
 impl<'a, T> FromIterator<T> for HassItems<'a, T> {
 	fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-		Self::Arc(Arc::from_iter(iter.into_iter()))
+		Self::Arc(Arc::from_iter(iter))
 	}
 }
 

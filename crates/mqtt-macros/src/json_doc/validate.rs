@@ -1,7 +1,7 @@
 use super::DocumentStruct;
 use darling::ToTokens;
 use proc_macro2::{Span, TokenStream};
-use quote::{format_ident, quote};
+use quote::{format_ident, quote, quote_spanned};
 
 struct ValidationImpl<'a>(&'a DocumentStruct);
 
@@ -12,13 +12,14 @@ impl<'a> ToTokens for ValidationImpl<'a> {
 		let invalidity_ident = &self.0.invalidity_ident;
 
 		let fields_validation = self.0.fields.iter().filter_map(|f| {
-			f.validate.then(|p| {
+			f.validate.then(|span, p| {
 				let ident = format_ident!("{}", &f.ident, span = Span::call_site());
 				let variant_ident = &f.variant_ident;
 				let field = quote!(&self.#ident);
 				match p {
 					None => quote! { .validate_with(#field, #invalidity_ident::#variant_ident) },
 					Some(p) => {
+						let p = quote_spanned!(*span=>#p);
 						quote! { .validate_using_with(&#p, #field, #invalidity_ident::#variant_ident) }
 					}
 				}

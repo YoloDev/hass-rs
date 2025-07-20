@@ -1,6 +1,6 @@
 use generational_arena::{Arena, Index};
 use std::{
-	collections::{btree_map, BTreeMap},
+	collections::{BTreeMap, btree_map},
 	ops,
 	sync::Arc,
 };
@@ -160,10 +160,7 @@ impl<'a, T> AsRef<T> for Match<'a, T> {
 }
 
 impl<R, T> Router<R, T> {
-	pub fn matches<'a>(
-		&'a self,
-		key: &str,
-	) -> impl Iterator<Item = Match<'a, T>> + ExactSizeIterator {
+	pub fn matches<'a>(&'a self, key: &str) -> impl ExactSizeIterator<Item = Match<'a, T>> {
 		let nodes = match self.routes.get(key) {
 			Some(nodes) => nodes.nodes.iter(),
 			None => [].iter(),

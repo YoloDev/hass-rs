@@ -99,7 +99,7 @@ impl<'a> Validator for Light<'a> {
 
 /// Color modes for lights.
 #[derive(EnumSetType, Debug, serde::Serialize, serde::Deserialize)]
-#[enumset(serialize_as_list)]
+#[enumset(serialize_repr = "list")]
 pub enum ColorMode {
 	/// The light can be turned on or off. This mode must be the
 	/// only supported mode if supported by the light.

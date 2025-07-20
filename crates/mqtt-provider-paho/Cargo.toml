@@ -1,33 +1,42 @@
 [package]
 name = "hass-mqtt-provider-paho"
 version = "0.0.0"
-edition = "2021"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-trait = "0.1"
-flume = "0.10"
-futures = { version = "0.3", default-features = false }
-opentelemetry = "0.18"
-paho-mqtt = { version = "0.12", default-features = false }
-pin-project = "1"
-thiserror = "1"
-tokio = { version = "1", default-features = false, features = ["rt", "net"] }
-tracing = "0.1"
-tracing-opentelemetry = "0.18"
+async-trait = { workspace = true }
+flume = { workspace = true }
+futures = { workspace = true }
+opentelemetry = { workspace = true }
+paho-mqtt = { workspace = true }
+pin-project = { workspace = true }
+thiserror = { workspace = true }
+tokio = { workspace = true, features = ["rt", "net"] }
+tracing = { workspace = true }
+tracing-opentelemetry = { workspace = true }
 
-hass-dyn-error = { version = "0.0.0", path = "../dyn-error" }
-hass-metrics = { version = "0.0.0", path = "../metrics" }
-hass-mqtt-provider = { version = "0.0.0", path = "../mqtt-provider" }
+hass-dyn-error = { workspace = true }
+hass-metrics = { workspace = true }
+hass-mqtt-provider = { workspace = true }
 
 [features]
 default = ["bundled", "ssl"]
 bundled = ["paho-mqtt/bundled"]
-ssl = ["paho-mqtt/ssl"]
+ssl = ["paho-mqtt/ssl", "hass-mqtt-provider/ssl"]
 vendored-ssl = ["ssl", "paho-mqtt/vendored-ssl"]
 
 [package.metadata.docs.rs]
 all-features = true
 targets = ["x86_64-unknown-linux-gnu"]
 rustdoc-args = ["--cfg", "doc_cfg"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = [
+	'cfg(doc_cfg)',
+	'cfg(provide_any)',
+] }

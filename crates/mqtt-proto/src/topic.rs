@@ -14,10 +14,7 @@ impl<'a> Validate for Topic<'a> {
 	fn validate(&self) -> ValidationResult<Self::Invalidity> {
 		Context::new()
 			.invalidate_if(self.is_empty(), TopicInvalidity::Empty)
-			.invalidate_if(
-				self.contains(|c| matches!(c, '#' | '+')),
-				TopicInvalidity::IllegalCharacter,
-			)
+			.invalidate_if(self.contains(['#', '+']), TopicInvalidity::IllegalCharacter)
 			.into()
 	}
 }

@@ -276,8 +276,8 @@ where
 pub struct MqttOptions {
 	pub host: String,
 	pub port: u16,
-	#[cfg(feature = "tls")]
-	#[cfg_attr(doc_cfg, doc(cfg(feature = "tls")))]
+	#[cfg(feature = "ssl")]
+	#[cfg_attr(doc_cfg, doc(cfg(feature = "ssl")))]
 	pub tls: bool,
 	pub auth: Option<MqttAuthOptions>,
 	pub persitence: PathBuf,
@@ -289,7 +289,7 @@ impl MqttOptions {
 		MqttOptions {
 			host: host.into(),
 			port: 1883,
-			#[cfg(feature = "tls")]
+			#[cfg(feature = "ssl")]
 			tls: false,
 			auth: None,
 			persitence,
@@ -297,7 +297,7 @@ impl MqttOptions {
 		}
 	}
 
-	#[cfg(feature = "tls")]
+	#[cfg(feature = "ssl")]
 	#[cfg_attr(doc_cfg, doc(cfg(feature = "tls")))]
 	pub fn new_tls(host: impl Into<String>, persitence: PathBuf) -> Self {
 		MqttOptions {
@@ -315,7 +315,7 @@ impl MqttOptions {
 		self
 	}
 
-	#[cfg(feature = "tls")]
+	#[cfg(feature = "ssl")]
 	#[cfg_attr(doc_cfg, doc(cfg(feature = "tls")))]
 	pub fn tls(&mut self, tls: bool) -> &mut Self {
 		self.tls = tls;

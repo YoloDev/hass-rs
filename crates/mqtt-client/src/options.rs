@@ -40,7 +40,7 @@ impl HassMqttOptions {
 		}
 	}
 
-	#[cfg(feature = "tls")]
+	#[cfg(feature = "ssl")]
 	#[cfg_attr(doc_cfg, doc(cfg(feature = "tls")))]
 	pub fn new_tls(host: impl Into<String>, application_name: impl Into<Arc<str>>) -> Self {
 		let application_name = ApplicationName::new(application_name);
@@ -59,7 +59,7 @@ impl HassMqttOptions {
 		self
 	}
 
-	#[cfg(feature = "tls")]
+	#[cfg(feature = "ssl")]
 	#[cfg_attr(doc_cfg, doc(cfg(feature = "tls")))]
 	pub fn tls(mut self, tls: bool) -> Self {
 		self.mqtt.tls(tls);
@@ -199,7 +199,7 @@ impl MqttPersistence {
 pub struct MqttOptions {
 	pub(crate) host: String,
 	pub(crate) port: u16,
-	#[cfg(feature = "tls")]
+	#[cfg(feature = "ssl")]
 	pub(crate) tls: bool,
 	pub(crate) auth: Option<MqttAuthOptions>,
 	pub(crate) persitence: MqttPersistence,
@@ -211,7 +211,7 @@ impl MqttOptions {
 		MqttOptions {
 			host: host.into(),
 			port: 1883,
-			#[cfg(feature = "tls")]
+			#[cfg(feature = "ssl")]
 			tls: false,
 			auth: None,
 			persitence: MqttPersistence::Default,
@@ -219,7 +219,7 @@ impl MqttOptions {
 		}
 	}
 
-	#[cfg(feature = "tls")]
+	#[cfg(feature = "ssl")]
 	#[cfg_attr(doc_cfg, doc(cfg(feature = "tls")))]
 	pub fn new_tls(host: impl Into<String>) -> Self {
 		MqttOptions {
@@ -237,7 +237,7 @@ impl MqttOptions {
 		self
 	}
 
-	#[cfg(feature = "tls")]
+	#[cfg(feature = "ssl")]
 	#[cfg_attr(doc_cfg, doc(cfg(feature = "tls")))]
 	pub fn tls(&mut self, tls: bool) -> &mut Self {
 		self.tls = tls;
@@ -303,7 +303,7 @@ impl TryInto<hass_mqtt_provider::MqttOptions> for HassMqttOptions {
 		options.version(self.mqtt.version);
 		options.port(self.mqtt.port);
 
-		#[cfg(feature = "tls")]
+		#[cfg(feature = "ssl")]
 		options.tls(self.mqtt.tls);
 
 		if let Some(auth) = self.mqtt.auth {

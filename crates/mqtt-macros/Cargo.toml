@@ -1,11 +1,11 @@
 [package]
 name = "hass-mqtt-macros"
 version = "0.0.0"
-edition = "2021"
 description = "home-assistant MQTT discovery types macros"
-license = "MIT"
-authors = ["Aleksander Heintz <alxandr@alxandr.me>"]
-repository = "https://github.com/YoloDev/hass-rs"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 
 [lib]
 proc-macro = true
@@ -13,12 +13,12 @@ proc-macro = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-convert_case = "0.6"
-darling = "0.14"
-itertools = { version = "0.11" }
-proc-macro2 = "1"
-quote = "1"
-syn = { version = "1", features = ["derive", "parsing"] }
+convert_case = { workspace = true }
+darling = { workspace = true }
+itertools = { workspace = true }
+proc-macro2 = { workspace = true }
+quote = { workspace = true }
+syn = { workspace = true, features = ["derive", "parsing"] }
 
 [package.metadata.docs.rs]
 all-features = true

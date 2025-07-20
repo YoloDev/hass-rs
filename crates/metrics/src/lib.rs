@@ -1,5 +1,4 @@
 use opentelemetry::metrics as otel;
-use opentelemetry::Context as OtelContext;
 use opentelemetry::{Key, KeyValue, Value};
 use std::borrow::Cow;
 use std::sync::Arc;
@@ -166,24 +165,23 @@ pub struct Counter<T: MetricFields> {
 impl<T: MetricFields> Counter<T> {
 	pub fn new(
 		meter: &otel::Meter,
-		name: impl Into<String>,
-		description: impl Into<String>,
+		name: impl Into<Cow<'static, str>>,
+		description: impl Into<Cow<'static, str>>,
 		field_names: <T as MetricFields>::Init,
 	) -> Self {
 		let field_names = T::intern(field_names);
 
-		let inner = meter.u64_counter(name).with_description(description).init();
+		let inner = meter
+			.u64_counter(name)
+			.with_description(description)
+			.build();
 		Self { inner, field_names }
 	}
 }
 
 impl Counter<()> {
-	pub fn add_in_context(&self, cx: &OtelContext, value: u64) {
-		self.inner.add(cx, value, &[])
-	}
-
 	pub fn add(&self, value: u64) {
-		self.add_in_context(&OtelContext::current(), value)
+		self.inner.add(value, &[])
 	}
 }
 
@@ -191,13 +189,9 @@ impl<T1> Counter<(T1,)>
 where
 	T1: MetricField,
 {
-	pub fn add_in_context(&self, cx: &OtelContext, value: u64, field1: T1) {
-		let field_values = <(T1,) as MetricFields>::zip(&self.field_names, [field1.into_value()]);
-		self.inner.add(cx, value, &field_values)
-	}
-
 	pub fn add(&self, value: u64, field1: T1) {
-		self.add_in_context(&OtelContext::current(), value, field1)
+		let field_values = <(T1,) as MetricFields>::zip(&self.field_names, [field1.into_value()]);
+		self.inner.add(value, &field_values)
 	}
 }
 
@@ -206,16 +200,12 @@ where
 	T1: MetricField,
 	T2: MetricField,
 {
-	pub fn add_in_context(&self, cx: &OtelContext, value: u64, field1: T1, field2: T2) {
+	pub fn add(&self, value: u64, field1: T1, field2: T2) {
 		let field_values = <(T1, T2) as MetricFields>::zip(
 			&self.field_names,
 			[field1.into_value(), field2.into_value()],
 		);
-		self.inner.add(cx, value, &field_values)
-	}
-
-	pub fn add(&self, value: u64, field1: T1, field2: T2) {
-		self.add_in_context(&OtelContext::current(), value, field1, field2)
+		self.inner.add(value, &field_values)
 	}
 }
 
@@ -281,11 +271,11 @@ macro_rules! metrics {
 			}
 
 			pub fn new() -> Self {
-				let meter = $crate::_export::meter_with_version(
-					env!("CARGO_PKG_NAME"),
-					Some(env!("CARGO_PKG_VERSION")),
-					None
-				);
+				let scope = $crate::_export::InstrumentationScope::builder(env!("CARGO_PKG_NAME"))
+					.with_version(env!("CARGO_PKG_VERSION"))
+					.build();
+
+				let meter = $crate::_export::meter_with_scope(scope);
 
 				Self::from_meter(meter)
 			}
@@ -302,6 +292,7 @@ macro_rules! metrics {
 #[doc(hidden)]
 pub mod _export {
 	pub use once_cell::sync::OnceCell;
-	pub use opentelemetry::global::meter_with_version;
+	pub use opentelemetry::global::meter_with_scope;
 	pub use opentelemetry::metrics as otel;
+	pub use opentelemetry::InstrumentationScope;
 }

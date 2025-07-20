@@ -1,5 +1,10 @@
 use async_trait::async_trait;
-use futures::{future::LocalBoxFuture, pin_mut, stream::FusedStream, FutureExt, Stream, StreamExt};
+use futures::{
+	future::{Either, LocalBoxFuture},
+	pin_mut,
+	stream::FusedStream,
+	FutureExt, Stream, StreamExt, TryFutureExt,
+};
 use hass_dyn_error::DynError;
 use hass_mqtt_provider::{
 	AsMqttOptions, MqttBuildableMessage, MqttClient, MqttDisconnectBuilder, MqttMessage,
@@ -210,7 +215,7 @@ impl MqttProvider for PahoMqtt {
 			.server_uris(&hosts)
 			.automatic_reconnect(Duration::from_secs(5), Duration::from_secs(60 * 5));
 
-		#[cfg(feature = "tls")]
+		#[cfg(feature = "ssl")]
 		if options.tls {
 			builder.ssl_options(paho_mqtt::SslOptions::new());
 		}
@@ -240,30 +245,42 @@ impl MqttProvider for PahoMqtt {
 				let online_message = online_message.clone();
 				async move {
 					let client = &inner.client;
-					let subscriptions = inner.subscriptions.borrow();
-					let subscriptions = &*subscriptions;
-					if !subscriptions.is_empty() {
-						let mut topics = Vec::with_capacity(subscriptions.len());
-						let mut qos = Vec::with_capacity(subscriptions.len());
-						let mut options = Vec::with_capacity(subscriptions.len());
-						for opt in subscriptions {
-							topics.push(opt.topic.clone());
-							qos.push(i32::from(opt.qos));
-							options.push(paho_mqtt::SubscribeOptions::from(opt));
-						}
 
-						if let Err(e) = client
-							.subscribe_many_with_options(&topics, &qos, &options, None)
-							.await
-						{
-							event!(
-								Level::ERROR,
-								client.id = %client_id,
-								client.mqtt.version = %mqtt_version,
-								"failed to resubscribe to topics: {:#}",
-								e,
-							);
+					let subscribe_future = {
+						let subscriptions = inner.subscriptions.borrow();
+						let subscriptions = &*subscriptions;
+
+						if !subscriptions.is_empty() {
+							let mut topics = Vec::with_capacity(subscriptions.len());
+							let mut qos = Vec::with_capacity(subscriptions.len());
+							let mut options = Vec::with_capacity(subscriptions.len());
+
+							for opt in subscriptions {
+								topics.push(opt.topic.clone());
+								qos.push(i32::from(opt.qos));
+								options.push(paho_mqtt::SubscribeOptions::from(opt));
+							}
+
+							Either::Left(
+								client
+									.subscribe_many_with_options(&topics, &qos, &options, None)
+									.map_ok(Some),
+							)
+						} else {
+							let ok: Option<paho_mqtt::ServerResponse> = None;
+							let result: paho_mqtt::Result<Option<paho_mqtt::ServerResponse>> = Ok(ok);
+							Either::Right(ready(result))
 						}
+					};
+
+					if let Err(e) = subscribe_future.await {
+						event!(
+							Level::ERROR,
+							client.id = %client_id,
+							client.mqtt.version = %mqtt_version,
+							"failed to resubscribe to topics: {:#}",
+							e,
+						);
 					}
 
 					if let Err(e) = client.publish(online_message.message).await {
@@ -447,7 +464,7 @@ impl Client {
 		self.inner.client.client_id()
 	}
 
-	fn mqtt_version(&self) -> u32 {
+	fn mqtt_version(&self) -> paho_mqtt::MqttVersion {
 		self.inner.client.mqtt_version()
 	}
 }
@@ -547,14 +564,22 @@ impl Client {
 
 		let topic = options.topic.clone();
 		if options.is_empty() {
-			self
-				.inner
-				.client
-				.subscribe(options.topic.as_ref(), options.qos.into())
+			self.inner.client.subscribe(
+				options.topic.as_ref(),
+				match options.qos {
+					QosLevel::AtMostOnce => paho_mqtt::QoS::AtMostOnce,
+					QosLevel::AtLeastOnce => paho_mqtt::QoS::AtLeastOnce,
+					QosLevel::ExactlyOnce => paho_mqtt::QoS::ExactlyOnce,
+				},
+			)
 		} else {
 			self.inner.client.subscribe_with_options(
 				options.topic.as_ref(),
-				options.qos.into(),
+				match options.qos {
+					QosLevel::AtMostOnce => paho_mqtt::QoS::AtMostOnce,
+					QosLevel::AtLeastOnce => paho_mqtt::QoS::AtLeastOnce,
+					QosLevel::ExactlyOnce => paho_mqtt::QoS::ExactlyOnce,
+				},
 				paho_mqtt::SubscribeOptions::from(&options),
 				None,
 			)
@@ -679,7 +704,10 @@ impl MqttClient for Client {
 	fn messages(&self) -> Self::Messages {
 		MessageStream {
 			client_id: self.client_id(),
-			mqtt_version: self.mqtt_version(),
+			mqtt_version: match self.mqtt_version() {
+				paho_mqtt::MqttVersion::V5 => 5,
+				_ => 3,
+			},
 			inner: self.inner.messages.clone().into_stream(),
 		}
 	}
@@ -804,10 +832,9 @@ impl MqttMessage for Message {
 
 	fn qos(&self) -> QosLevel {
 		match self.message.qos() {
-			paho_mqtt::QOS_0 => QosLevel::AtMostOnce,
-			paho_mqtt::QOS_1 => QosLevel::AtLeastOnce,
-			paho_mqtt::QOS_2 => QosLevel::ExactlyOnce,
-			_ => unreachable!(),
+			paho_mqtt::QoS::AtMostOnce => QosLevel::AtMostOnce,
+			paho_mqtt::QoS::AtLeastOnce => QosLevel::AtLeastOnce,
+			paho_mqtt::QoS::ExactlyOnce => QosLevel::ExactlyOnce,
 		}
 	}
 }

@@ -1,18 +1,21 @@
 [package]
 name = "hass-mqtt-provider"
 version = "0.0.0"
-edition = "2021"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-async-trait = "0.1.68"
-futures = { version = "0.3.28", default-features = false }
-tracing = "0.1"
+async-trait = { workspace = true }
+futures = { workspace = true }
+tracing = { workspace = true }
 
 [features]
-default = ["tls"]
-tls = []
+default = ["ssl"]
+ssl = []
 
 [package.metadata.docs.rs]
 all-features = true
@@ -21,3 +24,6 @@ rustdoc-args = ["--cfg", "doc_cfg"]
 
 [package.metadata.cargo-all-features]
 skip_optional_dependencies = true
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(doc_cfg)'] }

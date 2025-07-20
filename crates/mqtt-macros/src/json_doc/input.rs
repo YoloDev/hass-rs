@@ -1,8 +1,12 @@
-use darling::{ast::Data, error::Accumulator, Error, FromDeriveInput, FromField, FromMeta};
+use darling::{
+	ast::{Data, NestedMeta},
+	error::Accumulator,
+	Error, FromDeriveInput, FromField, FromMeta,
+};
 use proc_macro2::Span;
 use quote::format_ident;
 use std::collections::BTreeMap;
-use syn::{spanned::Spanned, Meta, MetaList, MetaNameValue, NestedMeta};
+use syn::{spanned::Spanned, Meta, MetaList, MetaNameValue};
 
 #[derive(FromDeriveInput, Debug)]
 #[darling(attributes(entity, state), supports(struct_named), forward_attrs)]
@@ -47,8 +51,8 @@ impl Default for Builder {
 	}
 }
 
-impl Spanned for Builder {
-	fn span(&self) -> Span {
+impl Builder {
+	pub fn span(&self) -> Span {
 		self.span.unwrap_or_else(Span::call_site)
 	}
 }
@@ -66,7 +70,10 @@ impl FromMeta for Builder {
 			}),
 
 			syn::Meta::NameValue(MetaNameValue {
-				lit: syn::Lit::Bool(b),
+				value: syn::Expr::Lit(syn::ExprLit {
+					lit: syn::Lit::Bool(b),
+					..
+				}),
 				..
 			}) => Ok(Builder {
 				enabled: b.value,
@@ -75,7 +82,10 @@ impl FromMeta for Builder {
 			}),
 
 			syn::Meta::NameValue(MetaNameValue {
-				lit: syn::Lit::Str(s),
+				value: syn::Expr::Lit(syn::ExprLit {
+					lit: syn::Lit::Str(s),
+					..
+				}),
 				..
 			}) => Ok(Builder {
 				enabled: true,
@@ -108,7 +118,7 @@ impl FromMeta for FieldValidation {
 		match mi {
 			syn::Meta::Path(p) => Ok(Self::Default(Some(p.span()))),
 			syn::Meta::NameValue(nv) => {
-				let path = <syn::Path as FromMeta>::from_value(&nv.lit)?;
+				let path = <syn::Path as FromMeta>::from_expr(&nv.value)?;
 				Ok(Self::With(nv.span(), path))
 			}
 			_ => {
@@ -116,16 +126,6 @@ impl FromMeta for FieldValidation {
 				// call it to make sure the span behaviors and error messages are the same.
 				Err(<()>::from_meta(mi).unwrap_err())
 			}
-		}
-	}
-}
-
-impl Spanned for FieldValidation {
-	fn span(&self) -> Span {
-		match self {
-			Self::None => Span::call_site(),
-			Self::Default(span) => span.unwrap_or_else(Span::call_site),
-			Self::With(span, _) => *span,
 		}
 	}
 }
@@ -152,7 +152,7 @@ impl FromMeta for AdditionalProps {
 		};
 
 		let mut accumulator = Accumulator::default();
-		for item in &list.nested {
+		for item in &NestedMeta::parse_meta_list(list.tokens.clone())? {
 			let (item_meta, name_value) = match item {
 				NestedMeta::Lit(l) => {
 					accumulator.push(Error::unsupported_format("literal").with_span(l));
@@ -206,7 +206,7 @@ impl AdditionalInvalidities {
 	fn from_items(list: &MetaList) -> darling::Result<Self> {
 		let mut accumulator = Accumulator::default();
 		let mut values = Vec::new();
-		for item in &list.nested {
+		for item in &NestedMeta::parse_meta_list(list.tokens.clone())? {
 			match item {
 				NestedMeta::Lit(l) => {
 					accumulator.push(Error::unsupported_format("literal").with_span(l));
@@ -267,7 +267,7 @@ impl AdditionalInvalidities {
 		let mut variant = Self::from_path_single(&list.path)?;
 		let mut accumulator = Accumulator::default();
 		let mut fields = Vec::new();
-		for item in &list.nested {
+		for item in &NestedMeta::parse_meta_list(list.tokens.clone())? {
 			match item {
 				NestedMeta::Lit(l) => {
 					accumulator.push(Error::unsupported_format("literal").with_span(l));
@@ -285,6 +285,7 @@ impl AdditionalInvalidities {
 					let field = syn::Field {
 						attrs: vec![],
 						vis: syn::Visibility::Inherited,
+						mutability: syn::FieldMutability::None,
 						ident: None,
 						colon_token: None,
 						ty: syn::Type::Path(syn::TypePath {

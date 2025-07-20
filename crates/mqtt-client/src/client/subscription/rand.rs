@@ -3,7 +3,7 @@
 use std::{
 	cell::Cell,
 	collections::hash_map::RandomState,
-	hash::{BuildHasher, Hash, Hasher},
+	hash::BuildHasher,
 	sync::atomic::{AtomicU32, Ordering::Relaxed},
 };
 
@@ -26,13 +26,8 @@ impl Default for FastRand {
 
 		let rand_state = RandomState::new();
 
-		let mut hasher = rand_state.build_hasher();
-
-		// Hash some unique-ish data to generate some new state
-		COUNTER.fetch_add(1, Relaxed).hash(&mut hasher);
-
 		// Get the seed
-		let seed = hasher.finish();
+		let seed = rand_state.hash_one(COUNTER.fetch_add(1, Relaxed));
 
 		Self::new(seed)
 	}
