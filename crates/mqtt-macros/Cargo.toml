@@ -1,6 +1,6 @@
 [package]
 name = "hass-mqtt-macros"
-version = "0.0.0"
+version = "0.1.0"
 description = "home-assistant MQTT discovery types macros"
 edition.workspace = true
 authors.workspace = true

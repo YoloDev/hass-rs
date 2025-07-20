@@ -527,14 +527,14 @@ dependencies = [
 
 [[package]]
 name = "hass-dyn-error"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "hass-provide-any-probe",
 ]
 
 [[package]]
 name = "hass-metrics"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "lasso",
  "once_cell",
@@ -543,7 +543,7 @@ dependencies = [
 
 [[package]]
 name = "hass-mqtt-client"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "async-trait",
  "bytes",
@@ -572,7 +572,7 @@ dependencies = [
 
 [[package]]
 name = "hass-mqtt-macros"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "convert_case",
  "darling 0.21.0",
@@ -584,7 +584,7 @@ dependencies = [
 
 [[package]]
 name = "hass-mqtt-proto"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "assert_matches",
  "enumset",
@@ -601,7 +601,7 @@ dependencies = [
 
 [[package]]
 name = "hass-mqtt-provider"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "async-trait",
  "futures",
@@ -610,7 +610,7 @@ dependencies = [
 
 [[package]]
 name = "hass-mqtt-provider-paho"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "async-trait",
  "flume",
@@ -768,7 +768,7 @@ dependencies = [
 
 [[package]]
 name = "mqtt-light"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "error-stack",
  "futures",
@@ -786,7 +786,7 @@ dependencies = [
 
 [[package]]
 name = "mqtt-light-manual-topics"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "error-stack",
  "futures",

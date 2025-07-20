@@ -1,1 +1,1 @@
-{}
+{"crates/dyn-error":"0.1.0","crates/metrics":"0.1.0","crates/mqtt-client":"0.1.0","crates/mqtt-macros":"0.1.0","crates/mqtt-proto":"0.1.0","crates/mqtt-provider":"0.1.0","crates/mqtt-provider-paho":"0.1.0","examples/mqtt-light":"0.0.1","examples/mqtt-light-manual-topics":"0.0.1"}

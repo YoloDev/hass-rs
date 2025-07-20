@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.1.0 (2025-07-20)
+
+
+### Features
+
+* add tracing ([#33](https://github.com/YoloDev/hass-rs/issues/33)) ([f833af1](https://github.com/YoloDev/hass-rs/commit/f833af1c61de8dd79ebfe66dd6488ab126312960))
+* partial no-std support ([#49](https://github.com/YoloDev/hass-rs/issues/49)) ([8391c24](https://github.com/YoloDev/hass-rs/commit/8391c245dc2f524795cbc3505d1604ab7abc5184))
+
 ## [0.2.0](https://github.com/YoloDev/hass-rs/compare/hass-mqtt-discovery-v0.1.0...hass-mqtt-discovery-v0.2.0) (2022-11-27)
 
 
