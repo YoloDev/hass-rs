@@ -74,7 +74,7 @@ impl<'a, T> HassItems<'a, T> {
 		s
 	}
 
-	pub fn iter(&self) -> core::slice::Iter<T> {
+	pub fn iter(&self) -> core::slice::Iter<'_, T> {
 		self.as_slice().iter()
 	}
 }
