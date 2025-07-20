@@ -23,7 +23,7 @@ jobs:
       matrix:
         os:
           - macos-latest
-          # - windows-latest
+          - windows-latest
           - ubuntu-latest
         channel:
           - stable
