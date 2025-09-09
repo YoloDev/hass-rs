@@ -6,7 +6,7 @@ use hass_mqtt_macros::{entity_document, state_document};
 ///
 /// See: <https://www.home-assistant.io/integrations/light.mqtt/#json-schema>
 #[entity_document]
-#[entity(extend_json(schema = "json"))]
+#[entity(extend_json(schema = "json", platform = "light"))]
 #[entity(validate(ColorModeWithoutSupportedColorModes))]
 pub struct Light<'a> {
 	/// Flag that defines if the light supports brightness.
@@ -348,57 +348,57 @@ impl<'a> LightState<'a> {
 pub struct LightColorState {
 	#[cfg_attr(
 		any(feature = "ser", feature = "de"),
-		serde(default, skip_serializing_if = "Option::is_none")
+		serde(default, skip_serializing_if = "Option::is_none", rename = "r")
 	)]
-	red: Option<u8>,
+	pub red: Option<u8>,
+
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(default, skip_serializing_if = "Option::is_none", rename = "g")
+	)]
+	pub green: Option<u8>,
+
+	#[cfg_attr(
+		any(feature = "ser", feature = "de"),
+		serde(default, skip_serializing_if = "Option::is_none", rename = "b")
+	)]
+	pub blue: Option<u8>,
 
 	#[cfg_attr(
 		any(feature = "ser", feature = "de"),
 		serde(default, skip_serializing_if = "Option::is_none")
 	)]
-	green: Option<u8>,
+	pub cold_white: Option<u8>,
 
 	#[cfg_attr(
 		any(feature = "ser", feature = "de"),
 		serde(default, skip_serializing_if = "Option::is_none")
 	)]
-	blue: Option<u8>,
+	pub white: Option<u8>,
 
 	#[cfg_attr(
 		any(feature = "ser", feature = "de"),
 		serde(default, skip_serializing_if = "Option::is_none")
 	)]
-	cold_white: Option<u8>,
+	pub x: Option<f32>,
 
 	#[cfg_attr(
 		any(feature = "ser", feature = "de"),
 		serde(default, skip_serializing_if = "Option::is_none")
 	)]
-	white: Option<u8>,
+	pub y: Option<f32>,
 
 	#[cfg_attr(
 		any(feature = "ser", feature = "de"),
-		serde(default, skip_serializing_if = "Option::is_none")
+		serde(default, skip_serializing_if = "Option::is_none", rename = "h")
 	)]
-	x: Option<f32>,
+	pub hue: Option<f32>,
 
 	#[cfg_attr(
 		any(feature = "ser", feature = "de"),
-		serde(default, skip_serializing_if = "Option::is_none")
+		serde(default, skip_serializing_if = "Option::is_none", rename = "s")
 	)]
-	y: Option<f32>,
-
-	#[cfg_attr(
-		any(feature = "ser", feature = "de"),
-		serde(default, skip_serializing_if = "Option::is_none")
-	)]
-	hue: Option<f32>,
-
-	#[cfg_attr(
-		any(feature = "ser", feature = "de"),
-		serde(default, skip_serializing_if = "Option::is_none")
-	)]
-	saturation: Option<f32>,
+	pub saturation: Option<f32>,
 }
 
 impl LightColorState {
