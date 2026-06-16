@@ -43,7 +43,7 @@ error-stack = "0.5"
 flume = "0.11"
 futures = { version = "0.3", default-features = false }
 generational-arena = "0.2"
-itertools = "0.14"
+itertools = "0.15"
 lasso = "0.7"
 nameof = "1"
 once_cell = "1"
