@@ -39,7 +39,7 @@ convert_case = "0.8"
 darling = "0.21"
 dirs = "6"
 enumset = "1"
-error-stack = "0.5"
+error-stack = "0.8"
 flume = "0.11"
 futures = { version = "0.3", default-features = false }
 generational-arena = "0.2"
