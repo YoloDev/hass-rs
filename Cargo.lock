@@ -538,7 +538,7 @@ version = "0.0.0"
 dependencies = [
  "lasso",
  "once_cell",
- "opentelemetry 0.30.0",
+ "opentelemetry 0.32.0",
 ]
 
 [[package]]
@@ -557,7 +557,7 @@ dependencies = [
  "hass-mqtt-provider",
  "hass-mqtt-provider-paho",
  "hass-provide-any-probe",
- "opentelemetry 0.30.0",
+ "opentelemetry 0.32.0",
  "pin-project",
  "serde",
  "serde_json",
@@ -618,7 +618,7 @@ dependencies = [
  "hass-dyn-error",
  "hass-metrics",
  "hass-mqtt-provider",
- "opentelemetry 0.30.0",
+ "opentelemetry 0.32.0",
  "paho-mqtt",
  "pin-project",
  "thiserror 2.0.12",
@@ -773,7 +773,7 @@ dependencies = [
  "error-stack",
  "futures",
  "hass-mqtt-client",
- "opentelemetry 0.30.0",
+ "opentelemetry 0.32.0",
  "opentelemetry-jaeger",
  "serde_json",
  "thiserror 2.0.12",
@@ -791,7 +791,7 @@ dependencies = [
  "error-stack",
  "futures",
  "hass-mqtt-client",
- "opentelemetry 0.30.0",
+ "opentelemetry 0.32.0",
  "opentelemetry-jaeger",
  "serde_json",
  "thiserror 2.0.12",
@@ -918,6 +918,15 @@ dependencies = [
  "pin-project-lite",
  "thiserror 2.0.12",
  "tracing",
+]
+
+[[package]]
+name = "opentelemetry"
+version = "0.32.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0142c63252a9e054e68a4c61a5778f7b14f576274d593f8ce883d191a099682"
+dependencies = [
+ "js-sys",
 ]
 
 [[package]]
