@@ -41,7 +41,7 @@ jobs:
           git config --global core.symlinks true
           git config --global fetch.parallel 32
 
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.channel }}
