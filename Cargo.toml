@@ -48,7 +48,7 @@ lasso = "0.7"
 nameof = "1"
 once_cell = "1"
 opentelemetry-jaeger = "0.22"
-paho-mqtt = { version = "0.13", default-features = false }
+paho-mqtt = { version = "0.14", default-features = false }
 pin-project = "1"
 proc-macro2 = "1"
 quote = "1"
