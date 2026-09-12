@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - id: release
-        uses: GoogleCloudPlatform/release-please-action@v3
+        uses: GoogleCloudPlatform/release-please-action@db8f2c60ee802b3748b512940dde88eabd7b7e01 # v3.7.13
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           command: manifest
@@ -43,9 +43,9 @@ jobs:
           git config --global core.symlinks true
           git config --global fetch.parallel 32
 
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@a37ce9120846195fa4ece8f58b268e6043cb2f26 # v3.7.0
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
       - name: Install cargo plugins
         run: cargo install cargo-workspaces
       - name: Publish
